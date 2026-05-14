@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
-    name="ScriptElf",
+    name="auto_control_script",
     version="2.4",
-    description="robio's game elf",
+    description="Windows 游戏自动化工具库 —— 窗口截图、图像识别、ADB 控制",
     license="GPL Licence",
-
     author="robiowu",
-    packages=find_packages(),
+    packages=['auto_control_script'],
     platforms="windows",
-    install_requires=['pywin32', 'opencv-python', 'pillow', 'numpy'],
+    install_requires=['pywin32', 'opencv-python', 'pillow', 'numpy', 'pyautogui'],
 )
-
-# if __name__ == "__main__":
-#     print(find_packages())

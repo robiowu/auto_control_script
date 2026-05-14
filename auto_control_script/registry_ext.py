@@ -1,20 +1,28 @@
-# coding: gbk
+# -*- coding: utf-8 -*-
 """
-×¢²á±íÏà¹Ø²Ù×÷
+registry_ext.py - Windows æ³¨å†Œè¡¨æ“ä½œæ¨¡å—
 
-ps:´ÓÖ®Ç°µÄ×Ô¶¯»¯½Å±¾ÖĞÖ±½ÓÄÃµÄÖ®ºó×öµÄpython3ÊÊÅä£¬×÷ÕßÎ´Öª
+èŒè´£:
+- æä¾›æ³¨å†Œè¡¨é”®å€¼çš„è¯»å†™ã€æšä¸¾ã€å­˜åœ¨æ€§æ£€æŸ¥
+- æ”¯æŒå¯¼å…¥ .reg æ–‡ä»¶
+
+è°ƒç”¨é“¾:
+- å¤–éƒ¨è„šæœ¬ -> registry_ext.py -> winreg
 """
 import os
 import winreg as _winreg
 
 
-def OpenFullPathReg(regPath, sam=_winreg.KEY_READ):
+def OpenFullPathReg(regPath: str, sam: int = _winreg.KEY_READ):
     """
-    @ Desc£º¸ù¾İ×¢²á±íÈ«Â·¾¶´ò¿ª×¢²á±í£¬·µ»Ø¾ä±ú¡£
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ INPUT: [int] sam: ·ÃÎÊÈ¨ÏŞ£¬±ÈÈç£º_winreg.KEY_ALL_ACCESS
-    @ OUTPUT£º³É¹¦·µ»Ø×¢²á±í¾ä±ú, Ê§°Ü·µ»ØNone
+    æ ¹æ®å®Œæ•´æ³¨å†Œè¡¨è·¯å¾„æ‰“å¼€æ³¨å†Œè¡¨é”®ï¼Œè¿”å›é”®å¥æŸ„ã€‚
+
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®åï¼Œä¾‹å¦‚ HKEY_LOCAL_MACHINE\\SOFTWARE\\Tencent\\QQPCMgr
+        sam (int): è®¿é—®æƒé™ï¼Œä¾‹å¦‚ _winreg.KEY_ALL_ACCESS
+
+    Returns:
+        æ³¨å†Œè¡¨é”®å¥æŸ„ï¼Œå¤±è´¥è¿”å› None
     """
     rootKeys = ["HKEY_CLASSES_ROOT", "HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE", "HKEY_USERS", "HKEY_CURRENT_CONFIG"]
     pos = -1
@@ -50,14 +58,16 @@ def OpenFullPathReg(regPath, sam=_winreg.KEY_READ):
     return key
 
 
-def GetValues(regPath):
+def GetValues(regPath: str) -> list:
     """
-    @ Desc£º»ñµÃÒ»¸ö×¢²á±í¼üÏÂÃæµÄËùÓĞ¼üÖµ¡£
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ OUTPUT£ºËùÓĞ×¢²á±í¼üÖµ×é³ÉµÄÁĞ±í£¬Ã¿Ò»ÏîÊÇ(name, value, type)
-    """
+    è·å–ä¸€ä¸ªæ³¨å†Œè¡¨é”®ä¸‹çš„æ‰€æœ‰é”®å€¼ã€‚
 
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®å
+
+    Returns:
+        list: ç”±æ³¨å†Œè¡¨é”®å€¼ç»„æˆçš„åˆ—è¡¨ï¼Œæ¯ä¸€é¡¹ä¸º (name, value, type)
+    """
     values = []
     key = OpenFullPathReg(regPath)
     if key is None:
@@ -65,21 +75,23 @@ def GetValues(regPath):
     try:
         i = 0
         while True:
-            name, value, type = _winreg.EnumValue(key, i)
-            values.append((name, value, type))
+            name, value, type_val = _winreg.EnumValue(key, i)
+            values.append((name, value, type_val))
             i = i + 1
     except WindowsError:
         return values
 
 
-def GetSubKeys(regPath):
+def GetSubKeys(regPath: str) -> list:
     """
-    @ Desc£º»ñµÃÒ»¸ö×¢²á±í¼üÏÂÃæµÄËùÓĞ×Ó¼ü¡£
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ OUTPUT£ºËùÓĞ×¢²á±í×Ó¼ü×é³ÉµÄÁĞ±í¡£
-    """
+    è·å–ä¸€ä¸ªæ³¨å†Œè¡¨é”®ä¸‹çš„æ‰€æœ‰å­é”®åã€‚
 
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®å
+
+    Returns:
+        list: ç”±å­é”®åç»„æˆçš„å­—ç¬¦ä¸²åˆ—è¡¨
+    """
     subKeys = []
     key = OpenFullPathReg(regPath)
     if key is None:
@@ -94,14 +106,16 @@ def GetSubKeys(regPath):
         return subKeys
 
 
-def IsKeyExist(regPath):
+def IsKeyExist(regPath: str) -> bool:
     """
-    @ Desc£ºÅĞ¶Ï×¢²á±í¼üÊÇ·ñ´æÔÚ¡£
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ OUTPUT£º´æÔÚ·µ»ØTrue£¬·ñÔò·µ»ØFalse¡£
-    """
+    åˆ¤æ–­æ³¨å†Œè¡¨é”®æ˜¯å¦å­˜åœ¨ã€‚
 
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®å
+
+    Returns:
+        bool: å­˜åœ¨è¿”å› Trueï¼Œå¦åˆ™è¿”å› False
+    """
     key = OpenFullPathReg(regPath)
     if key is None:
         return False
@@ -110,13 +124,16 @@ def IsKeyExist(regPath):
         return True
 
 
-def IsValueExist(regPath, valueName):
+def IsValueExist(regPath: str, valueName: str) -> bool:
     """
-    @ Desc£ºÅĞ¶Ï×¢²á±í¼üÏÂÄ³¸öÖµÊÇ·ñ´æÔÚ¡£
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ INPUT: [str] valueName: ×¢²á±í¼üÖµÃû³Æ¡£
-    @ OUTPUT£º´æÔÚ·µ»ØTrue£¬·ñÔò·µ»ØFalse¡£
+    åˆ¤æ–­æ³¨å†Œè¡¨é”®ä¸‹æŸä¸ªå€¼æ˜¯å¦å­˜åœ¨ã€‚
+
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®å
+        valueName (str): æ³¨å†Œè¡¨å€¼åç§°
+
+    Returns:
+        bool: å­˜åœ¨è¿”å› Trueï¼Œå¦åˆ™è¿”å› False
     """
     values = GetValues(regPath)
     for value in values:
@@ -125,16 +142,17 @@ def IsValueExist(regPath, valueName):
     return False
 
 
-def GetRegValue(regPath, valueName):
+def GetRegValue(regPath: str, valueName: str):
     """
-    @ Desc£º»ñÈ¡×¢²á±í¼üÏÂÖ¸¶¨ValueµÄÖµ¡£
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ INPUT: [str] valueName: ×¢²á±í¼üÖµÃû³Æ¡£
-    @ OUTPUT£º·µ»ØvalueName¶ÔÓ¦µÄÖµ£¬²»´æÔÚ»òÒì³£Ê±·µ»ØNone
-    i.e. GetRegValue("HKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr","Version"),·µ»Ø°æ±¾ºÅÈç"10.x.xxxxx.201"
-    """
+    è¯»å–æ³¨å†Œè¡¨ä¸­æŒ‡å®šå€¼çš„æ•°å€¼ã€‚
 
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®åï¼Œä¾‹å¦‚ HKEY_LOCAL_MACHINE\\SOFTWARE\\Tencent\\QQPCMgr
+        valueName (str): æ³¨å†Œè¡¨å€¼åç§°ï¼Œä¾‹å¦‚ "Version"
+
+    Returns:
+        å€¼å¯¹åº”çš„æ•°æ®ï¼Œå¤±è´¥æˆ–å¼‚å¸¸æ—¶è¿”å› None
+    """
     value = None
     hkey = OpenFullPathReg(regPath)
     if hkey is None:
@@ -147,15 +165,18 @@ def GetRegValue(regPath, valueName):
         return None
 
 
-def ImportRegistry(regfilePath):
+def ImportRegistry(regfilePath: str) -> bool:
     """
-    @desc: ¾²Ä¬µ¼Èë×¢²á±íÎÄ¼ş
-    @ Author:
-    @ INPUT: [str] regfilePath: ´ıµ¼ÈëµÄ×¢²á±íÎÄ¼şµÄÂ·¾¶(±ØÌî)
-    @OUTPUT£º·µ»Øµ¼Èë½á¹û,³É¹¦·µ»ØTRUE£¬·ñÔò·µ»ØFALSE
+    é™é»˜å¯¼å…¥ä¸€ä¸ª .reg æ³¨å†Œè¡¨æ–‡ä»¶ã€‚
+
+    Args:
+        regfilePath (str): è¦å¯¼å…¥çš„æ³¨å†Œè¡¨æ–‡ä»¶çš„å®Œæ•´è·¯å¾„
+
+    Returns:
+        bool: æˆåŠŸè¿”å› Trueï¼Œå¦åˆ™è¿”å› False
     """
     if os.path.isfile(regfilePath):
-        cmd = "regedit /s %s >nul" % regfilePath
+        cmd = f"regedit /s {regfilePath} >nul"
         if os.system(cmd) == 0:
             print("import registry file succeed")
             return True
@@ -163,26 +184,24 @@ def ImportRegistry(regfilePath):
             print("Fail to import registry file")
             return False
     else:
-        print("%s is not a file" % regfilePath)
+        print(f"{regfilePath} is not a file")
         return False
 
 
-def SetValue(regPath, value_name, value):
+def SetValue(regPath: str, value_name: str, value: int) -> None:
     """
-    desc: ÉèÖÃÄ³Ïî×¢²á±íµÄÖµ
-    @ Author:
-    @ INPUT: [str] regPath: È«Â·¾¶×¢²á±í¼ü£¬±ÈÈç£ºHKEY_LOCAL_MACHINE\SOFTWARE\Tencent\QQPCMgr£¨±ØÌî£©
-    @ INPUT: [str] value_name: ÒªÉèÖÃµÄ×Ó¼üÖµ£¬¼´¶ÔÓ¦×¢²á±íÖĞÄ³ÏîÒªÉèÖÃµÄÖµµÄname
-    @ INPUT: [str] value: ÒªÉèÖÃµÄÖµ¡£
-    @OUTPUT£º·µ»ØÉèÖÃ×¢²á±íÖµ½á¹û,³É¹¦·µ»ØTRUE£¬·ñÔò·µ»ØFALSE
+    è®¾ç½®æ³¨å†Œè¡¨é”®ä¸‹æŸä¸ª DWORD ç±»å‹çš„å€¼ã€‚
+
+    Args:
+        regPath (str): å®Œæ•´è·¯å¾„æ³¨å†Œè¡¨é”®å
+        value_name (str): è¦è®¾ç½®çš„æ³¨å†Œè¡¨å€¼åç§°
+        value (int): è¦è®¾ç½®çš„å€¼
     """
     hkey = OpenFullPathReg(regPath, sam=_winreg.KEY_ALL_ACCESS)
     if hkey is None:
         return None
     try:
         _winreg.SetValueEx(hkey, value_name, 0, _winreg.REG_DWORD, value)
-        # ret = _winreg.SetValueEx(hkey, value_name, 0, _winreg.REG_DWORD, value)
-        # print(ret)    # ÒòÎª²Ù×÷³É¹¦µÄ»° return µÄ¶¼ÊÇ None£¬ËùÒÔÃ»ÓĞÒâÒåÈ¥ print Ëü
     except Exception as e:
         print(e, regPath, value_name)
         return None

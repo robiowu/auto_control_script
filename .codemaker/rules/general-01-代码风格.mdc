@@ -1,0 +1,89 @@
+---
+description: 代码编写风格、命名约定、注释要求及封装规范，适用于任意项目
+alwaysApply: true
+---
+# 代码风格规范
+
+## 1. 注释规范
+### 1.1 文件头注释
+每个文件必须包含文件头注释，明确约定本文件做什么事情，以及明确的调用链。
+**示例：**
+```python
+# -*- coding: utf-8 -*-
+"""
+database_handler.py - 数据库操作处理模块
+
+职责:
+- 封装数据库的增删改查操作
+
+调用链:
+- api_server.py -> database_handler.py -> pymysql
+"""
+```
+
+### 1.2 函数头注释
+函数头必须有注释，约定好参数、类型、功能及返回值。
+**示例：**
+```python
+def execute_query(sql: str, database: str = None) -> dict:
+    """
+    执行SQL查询语句。
+    
+    Args:
+        sql (str): 需要执行的SQL语句
+        database (str, optional): 目标数据库名，默认为None
+        
+    Returns:
+        dict: 查询结果，包含status和result字段
+    """
+    pass
+```
+
+## 2. 代码质量与风格
+- **零幻觉原则**：只使用已存在的API，不编造不存在的函数、类、模块。
+- **KISS原则**：避免过度封装，能直接调用就不多层封装。
+- **f-string规范**：避免嵌套f-string，提取条件逻辑。
+**示例：**
+```python
+# ✅ 正确: 提取条件逻辑
+level_info = f', 等级{level}' if level else ''
+msg = f"用户{name}{level_info}"
+```
+
+## 3. 命名约定
+- **类名**: CamelCase (如 `DatabaseHandler`)
+- **函数/方法/变量**: snake_case (如 `execute_query`, `db_name`)
+- **常量**: 全大写下划线 (如 `MAX_THREAD`)
+
+## 5. 封装规范
+
+- **不过度封装**：能用简单变量表达的，不要封装成 dataclass 或 TypedDict。
+- **不滥用结构体**：只有在多处共享、语义明确时，才抽取成类或结构体。
+- **不过度抽象**：避免只被调用一次的工具函数、只有一个实现的抽象基类。
+
+```python
+# ❌ 错误：一个临时结果不值得封装成类
+@dataclass
+class ClassifyResult:
+    primary: str
+    secondary: list
+    confidence: float
+    reason: str
+
+# ✅ 正确：直接用 dict 返回，调用方按需取值
+return {"primary": "infra-ops", "confidence": 0.95, "reason": "..."}
+```
+
+```python
+# ❌ 错误：只用一次的变量不值得提取
+def build_prompt(content):
+    max_len = 4096
+    truncated_content = content[:max_len]
+    prefix_text = "请分析以下文档："
+    full_prompt = f"{prefix_text}\n{truncated_content}"
+    return full_prompt
+
+# ✅ 正确：直接写，清晰简洁
+def build_prompt(content: str) -> str:
+    return f"请分析以下文档：\n{content[:4096]}"
+```

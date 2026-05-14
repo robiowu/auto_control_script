@@ -1,0 +1,40 @@
+---
+description: 代码重构、变更行为约束及兼容性规范，适用于任意项目
+alwaysApply: true
+---
+# 重构规范
+
+## 1. 重构前必问项
+
+> **⚠️ 重构前必须先询问用户，不得自作主张做兼容设计。**
+
+进行任何代码修改、重构、接口变更时，**必须在动手前询问用户**：
+
+1. **是否需要向前兼容？**（旧的调用方是否还要能跑）
+2. **是否保留旧逻辑？**（旧实现是否需要作为 fallback 保留）
+3. **是否有其他地方依赖该接口？**（影响范围确认）
+
+**禁止**在没有明确要求的情况下，自行增加兼容逻辑：
+
+```python
+# ❌ 错误：没人要求兼容，自作主张堆了一堆退化逻辑
+def classify(self, content, legacy_mode=False):
+    if legacy_mode:
+        return self._old_classify(content)   # 旧逻辑
+    try:
+        return self._new_classify(content)
+    except Exception:
+        return self._old_classify(content)   # 自作主张的兜底
+```
+
+```python
+# ✅ 正确：用户说不需要兼容，直接替换，干净利落
+def classify(self, content: str) -> dict:
+    return self._new_classify(content)
+```
+
+## 2. 禁止保留旧逻辑/fallback/deprecated
+
+- 没有明确兼容需求时，**直接替换旧逻辑**，不保留死代码。
+- 不要用 `deprecated` 注释标记后继续保留函数体。
+- 不要为"以防万事"增加 fallback、retry、降级分支。

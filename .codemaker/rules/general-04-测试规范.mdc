@@ -1,0 +1,46 @@
+---
+description: 测试代码生成原则与测试目录规范，适用于任意项目
+alwaysApply: true
+---
+# 测试代码规范
+
+## 1. 测试代码生成原则
+
+- **按需生成**：不主动生成单测脚本。只有在以下两种情况下才编写测试代码：
+  1. 在会话中询问用户并获得明确同意；
+  2. 用户主动要求生成测试。
+- **AAA模式**：测试代码应遵循 Arrange（准备）、Act（执行）、Assert（断言）模式。
+- **真实调用**：测试必须调用真实模块和外部资源，禁止使用 Mock 隔离依赖。测试的目的是验证功能是否正常工作，而不是验证代码结构。
+
+**禁止的垃圾测试：**
+```python
+# ❌ 错误：Mock 测试，没有调用真实模块，毫无意义
+def test_search_with_mock():
+    mock_interaction = MagicMock()
+    searcher = MarketSearch()
+    searcher._interaction = mock_interaction  # 注入 Mock
+    mock_interaction.click.assert_called()    # 只是在验证 Mock 调用
+```
+
+**正确的功能测试：**
+```python
+# ✅ 正确：调用真实模块，验证真实行为
+def test_classify_real():
+    classifier = DocClassifier()
+    result = classifier.classify("K8s 部署文档...")
+    assert result["primary"] == "infra-ops"
+```
+
+## 2. 测试目录规范（需要生成时遵守）
+
+- 测试代码放在 `tests/` 目录下，按模块组织。
+- 测试文件以 `test_` 开头，测试类以 `Test` 开头，测试方法以 `test_` 开头。
+- 每个测试文件的 docstring 中必须包含 pytest 运行方式：
+
+```python
+"""
+运行方式：
+    conda run -n python311 python -m pytest tests/xxx/test_yyy.py -v -s --log-cli-level=DEBUG
+    conda run -n python311 python -m pytest tests/xxx/test_yyy.py::TestClassName::test_method -v -s
+"""
+```

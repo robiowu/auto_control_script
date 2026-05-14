@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-用来自定义打印日志
+my_log.py - 日志记录模块
+
+职责:
+- 提供支持文件轮转的日志记录器
+- 同时输出到控制台和文件
+
+调用链:
+- game_case.py -> my_log.py -> logging
 """
 import logging
 from logging import handlers
@@ -16,16 +23,20 @@ class Logger(object):
         'crit': logging.CRITICAL
     }
 
-    def __init__(self, filename, savelog=True,
-                 level='info', when='D',
-                 backcount=3, fmt='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s'):
+    def __init__(self, filename: str, savelog: bool = True,
+                 level: str = 'info', when: str = 'D',
+                 backcount: int = 3,
+                 fmt: str = '%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s'):
         """
-        自定义日志模块的初始化
-        :param filename: <str> 你要保存的文件名，可使用绝对路径会长相对路径
-        :param level: <level_relations> 最低捕获的日志级别
-        :param when: <str> 日志的时间分片，可以参考下面的注释
-        :param backcount: <int> 最多保留的日志个数
-        :param fmt: <str> 日志的输出格式
+        初始化日志记录器，支持控制台输出和按时间轮转的文件输出。
+
+        Args:
+            filename (str): 日志文件名，可使用绝对路径或相对路径
+            savelog (bool): 是否保存日志到文件，默认 True
+            level (str): 最低捕获的日志级别，可选 debug/info/warning/error/crit
+            when (str): 日志文件轮转时间单位，可选 S/M/H/D/W/midnight
+            backcount (int): 最多保留的日志文件数量
+            fmt (str): 日志输出格式字符串
         """
         self.logger = logging.getLogger(filename)
         # 设置日志格式
@@ -55,7 +66,7 @@ class Logger(object):
 
 
 if __name__ == '__main__':
-    log = Logger('ScriptElf_test.log', level='debug', backcount=1)
+    log = Logger('auto_control_script_test.log', level='debug', backcount=1)
     log.logger.debug('debug')
     log.logger.info('info')
     log.logger.warning('警告')
