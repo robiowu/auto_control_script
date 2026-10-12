@@ -1,0 +1,62 @@
+---
+description: Python 解释器环境及调试规范，适用于 Python 项目（本机默认 Conda 环境 python313）
+alwaysApply: true
+---
+# Python环境与调试
+
+## 1. 解释器环境
+
+本机实测（2026-09-08）：唯一的真实 Python 来自 Conda（miniforge3），没有独立安装的原生 Python。执行 Python 脚本、测试、一次性命令时，默认使用 Conda 环境 `python313`。
+
+**环境信息：**
+- **conda 根目录**: `C:\ProgramData\miniforge3`
+- **默认环境名**: `python313`（Python 3.13.13，已安装 `requests` 2.34.2）
+- **解释器绝对路径**: `C:\ProgramData\miniforge3\envs\python313\python.exe`
+- **备用环境**: conda base `C:\ProgramData\miniforge3\python.exe`（同为 3.13.13），仅在 `python313` 缺失时使用
+- **禁止使用**: `C:\Users\<用户名>\AppData\Local\Microsoft\WindowsApps\python.exe`（应用商店存根，调用会跳转商店而非真正执行）
+
+**示例：**
+```bash
+# 推荐：不激活环境直接执行（脚本、测试、一次性命令均适用）
+conda run -n python313 python main.py
+conda run -n python313 python -m pytest tests/xxx/test_yyy.py -v -s
+
+# 或先激活再执行
+conda activate python313
+python main.py
+```
+
+**排查命令：**
+```powershell
+where.exe python                 # 列出 PATH 中命中到的 python
+conda env list                   # 列出所有 conda 环境
+conda run -n python313 python -c "import sys; print(sys.executable, sys.version)"
+```
+
+## 2. Windows 中文输出编码（实测坑）
+
+`conda run -n python313 python xxx.py` 在输出中文时，conda 用 GBK 打印子进程 stdout 会直接抛
+`UnicodeEncodeError: 'gbk' codec can't encode character`，命令看似"失败"但脚本其实已执行。
+
+```powershell
+# 方案 A（推荐）：执行前声明 UTF-8
+$env:PYTHONIOENCODING = 'utf-8'
+conda run -n python313 python xxx.py
+
+# 方案 B：终端仍显示乱码时，再设置控制台输出编码
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
+排查结论：控制台中文显示为"乱码"但退出码为 0 时，通常是终端解码问题而非脚本错误，
+以退出码与接口/文件内容为准。
+
+## 3. 新建/切换环境
+
+若某工具需要独立依赖或特定 Python 版本，新建环境并显式指定，不要污染 `python313`：
+
+```bash
+conda create -n <环境名> python=3.13 -y
+conda run -n <环境名> pip install -r requirements.txt
+```
+
+新环境创建后，在本文件顶部「环境信息」中补充记录，避免后续会话重复排查。

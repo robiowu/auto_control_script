@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>自动化平台 · 截图 / 输入 / OCR</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>自动化平台</h1>
+    <div class="toolbar">
+      <label>目标
+        <select id="target-select"></select>
+      </label>
+      <button id="btn-refresh-targets">刷新目标</button>
+      <span id="target-info" class="muted"></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel preview">
+      <h2>画面预览与取点</h2>
+      <div class="preview-tools">
+        <button id="btn-preview">刷新画面</button>
+        <label>取图路径
+          <select id="capture-path">
+            <option value="">自动</option>
+            <option value="printwindow">printwindow</option>
+            <option value="bitblt">bitblt</option>
+            <option value="wgc">wgc</option>
+            <option value="adb">adb</option>
+          </select>
+        </label>
+        <button id="btn-ocr">识别整幅文字</button>
+        <label>OCR 通道
+          <select id="ocr-channel">
+            <option value="">自动</option>
+            <option value="builtin">系统内置</option>
+            <option value="precise">高精度</option>
+          </select>
+        </label>
+      </div>
+      <div class="canvas-wrap">
+        <img id="preview-image" alt="画面预览">
+        <div id="preview-overlay"></div>
+      </div>
+      <p class="hint">在画面上按住拖拽即框选区域，单击即取点；结果会显示在下方坐标框中。</p>
+      <div class="coords">
+        <label>坐标 x,y <input id="coord-point" placeholder="例如 100,200"></label>
+        <label>区域 x1,y1,x2,y2 <input id="coord-region" placeholder="例如 0,0,300,120"></label>
+      </div>
+    </section>
+
+    <section class="panel steps">
+      <h2>步骤编排</h2>
+      <div class="step-form">
+        <label>类型
+          <select id="step-type">
+            <option value="wait">等待</option>
+            <option value="capture">截图存档</option>
+            <option value="find_image">按图查找</option>
+            <option value="find_text">按字查找</option>
+            <option value="click">点击</option>
+            <option value="input_text">输入文本</option>
+            <option value="key">按键</option>
+            <option value="drag">拖拽</option>
+            <option value="scroll">滚动</option>
+            <option value="condition">条件判断</option>
+            <option value="loop">循环</option>
+            <option value="log">记录日志</option>
+          </select>
+        </label>
+        <label>步骤 id <input id="step-id" placeholder="例如 s1"></label>
+        <label>文本/按键 <input id="step-text" placeholder="文字、按键名或滚动量"></label>
+        <label>坐标 <input id="step-point" placeholder="x,y"></label>
+        <label>终点 <input id="step-end" placeholder="x,y"></label>
+        <label>区域 <input id="step-region" placeholder="x1,y1,x2,y2"></label>
+        <label>引用 <input id="step-ref" placeholder="引用查找结果的步骤 id"></label>
+        <label>备用参数 <input id="step-extra" placeholder="seconds / repeat / jump_to 等"></label>
+        <label>失败策略
+          <select id="step-onfail">
+            <option value="abort">中止</option>
+            <option value="continue">继续</option>
+            <option value="retry">重试</option>
+          </select>
+        </label>
+        <label>超时(秒) <input id="step-timeout" value="0"></label>
+        <button id="btn-add-step">添加步骤</button>
+      </div>
+      <ol id="step-list"></ol>
+      <div class="script-actions">
+        <label>脚本名 <input id="script-name" placeholder="例如 login_flow"></label>
+        <button id="btn-save-script">保存</button>
+        <button id="btn-load-script">打开</button>
+        <button id="btn-new-script">新建</button>
+        <button id="btn-delete-script">删除</button>
+        <button id="btn-export-script">导出</button>
+        <select id="script-select"></select>
+      </div>
+    </section>
+
+    <section class="panel console">
+      <h2>运行控制台</h2>
+      <div class="run-tools">
+        <button id="btn-run">运行</button>
+        <button id="btn-pause">暂停</button>
+        <button id="btn-resume">继续</button>
+        <button id="btn-stop">停止</button>
+        <button id="btn-step">单步</button>
+        <button id="btn-retry">重试本步</button>
+        <span id="run-state" class="muted">未运行</span>
+      </div>
+      <div id="run-log"></div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

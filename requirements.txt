@@ -1,5 +1,23 @@
+# 核心：窗口与图像
 pywin32
 opencv-python
 pillow
 numpy
-pyautogui
+
+# 输入：前台扫描码级键鼠（替换 pyautogui，对全屏/游戏窗口兼容性更好）、剪贴板文本输入
+pydirectinput
+pyperclip
+
+# OCR 系统内置通道：零模型下载，开箱即用
+winocr
+
+# Web 可视化界面
+fastapi
+uvicorn
+
+# ---- 可选依赖：不安装时平台仍完整可用 ----
+# OCR 高精度通道（PP-OCRv4 模型，精度显著高于系统内置通道，需下载模型，约百 MB）：
+#   pip install rapidocr-onnxruntime onnxruntime
+# Windows 后台取图增强（WGC 会话取图，对游戏与全屏渲染窗口更稳）：
+#   pip install windows-capture
+# 启用方式详见 README.md 的「OCR 高精度通道」章节

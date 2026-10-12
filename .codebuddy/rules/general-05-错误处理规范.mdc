@@ -1,0 +1,168 @@
+---
+description: 错误处理策略、try-catch 使用约束及 AI Coding 友好的日志报错规范，适用于任意项目
+alwaysApply: true
+---
+# 错误处理规范
+
+## 1. Try-Catch 使用原则
+
+**谨慎使用 try-catch，优先让错误直接暴露，而非静默吞噬。**
+
+### 1.1 何时不应捕获
+- 可预见的、应前置校验的错误不应通过 try-catch 处理。
+- 致命错误（缺少必备配置、环境异常、资源不可用）不应捕获，应让其直接中断程序。
+
+```python
+# ❌ 错误：用 try-catch 掩盖前置校验
+def get_config(key: str) -> str:
+    try:
+        return os.environ[key]
+    except KeyError:
+        return ""   # 静默返回空值，调用方无从知晓配置缺失
+
+# ✅ 正确：前置校验 + 明确报错
+def get_config(key: str) -> str:
+    value = os.environ.get(key)
+    if value is None:
+        raise RuntimeError(f"缺少必需的环境变量: {key}")
+    return value
+```
+
+### 1.2 何时允许捕获
+- 调用不可控的外部资源（网络请求、第三方 SDK、文件系统）且已明确需降级/重试策略。
+- 非致命异常需要记录后继续执行剩余任务。
+
+```python
+# ✅ 合理：外部资源调用 + 明确重试 + 详细日志
+def fetch_remote_data(url: str, retries: int = 3) -> dict:
+    for attempt in range(1, retries + 1):
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.warning(f"[{url}] 第 {attempt}/{retries} 次请求失败: {e}")
+            if attempt == retries:
+                raise RuntimeError(f"请求 {url} 在 {retries} 次重试后仍然失败") from e
+            time.sleep(1)
+```
+
+> **通用禁例**：`except Exception` 裸捕获必须禁止（或仅在顶层兜底日志后重新 `raise`），各语言同理（Java: 避免 `catch (Exception e)`；Go: 避免 `recover()` 无脑兜底）。
+
+## 2. 强制需要时可直接报错
+
+当某一资源、字段、配置为业务逻辑的**必要前提**时，缺失即属异常，应当直接报错中断，而不是降级、兼容或返回空值。
+
+```python
+# ❌ 错误：必填字段缺失后仍返回空字符串
+def get_project_root() -> str:
+    root = os.getenv("PROJECT_ROOT")
+    return root if root else ""   # 调用方拿到空值继续跑，掩盖了问题
+
+# ✅ 正确：缺失即报错
+def get_project_root() -> str:
+    root = os.getenv("PROJECT_ROOT")
+    if not root:
+        raise RuntimeError("PROJECT_ROOT 环境变量未设置，无法确定项目根目录")
+    return root
+```
+
+```javascript
+// ❌ 错误：必填参数缺失后静默 fallback
+function sendMessage({ content, receiver }) {
+    receiver = receiver || 'default'  // 滑向不可预期的行为
+    api.send(JSON.stringify({ content, receiver }))
+}
+
+// ✅ 正确：缺失直接报错
+function sendMessage({ content, receiver }) {
+    if (!content) {
+        throw new Error('sendMessage: content 参数不能为空')
+    }
+    if (!receiver) {
+        throw new Error('sendMessage: receiver 参数不能为空')
+    }
+    api.send(JSON.stringify({ content, receiver }))
+}
+```
+
+## 3. 降级逻辑禁止原则
+
+> **降级即吞错。** 降级 / fallback / 兼容分支本质上是把异常状况悄悄消化掉，和过度 try-catch 同一病根。
+
+**不管新写代码还是修改旧代码，没有明确要求时一律不得自行添加降级逻辑。**
+
+```python
+# ❌ 错误：自作主张加降级——新服务失败后用旧服务兜底
+def classify(content: str) -> dict:
+    try:
+        return self._new_service.classify(content)
+    except Exception:
+        logger.warning("新服务失败，降级到旧服务")
+        return self._old_service.classify(content)  # 掩盖问题，新服务挂了没人知道
+
+# ✅ 正确：直接报错，让问题暴露
+def classify(content: str) -> dict:
+    return self._new_service.classify(content)
+```
+
+```javascript
+// ❌ 错误：API 调用失败后静默返回 mock 数据
+async function fetchOrders(userId) {
+    try {
+        return await api.getOrders(userId)
+    } catch (e) {
+        console.warn('API 失败，返回空列表')
+        return []  // 调用方以为用户真的没订单
+    }
+}
+
+// ✅ 正确：失败即失败
+async function fetchOrders(userId) {
+    return await api.getOrders(userId)
+}
+```
+
+**含降级/重试的真实需求场景**（必须由开发者明确提出后实现）：
+
+| 场景 | 示例 |
+|---|---|
+| 外部不可靠资源 + 明确重试 | 第三方 API 临时超时 → 重试 N 次后退化为缓存数据 |
+| 非关键功能降级 | 推荐模块挂了 → 展示默认推荐列表，主流程不受影响 |
+| 多级缓存穿透 | 内存缓存 miss → 查 Redis → 查 DB，每层打日志 |
+
+> 即使这类场景，也必须**每层打日志**告知降级发生，不可静默切换。
+
+## 4. AI Coding 友好化
+
+**日志要足、报错信息要全**——错误发生时，任何拿到错误堆栈的人（或 AI）应能直接定位问题，无需翻源码上下文。
+
+### 4.1 错误信息包含上下文
+```python
+# ❌ 错误：报错信息过少
+raise ValueError("参数无效")
+
+# ✅ 正确：报错附关键上下文
+raise ValueError(
+    f"create_user: age 参数无效 (实际值: {age}, 类型: {type(age).__name__}), "
+    f"期望为 0~150 之间的整数"
+)
+```
+
+### 4.2 日志记录关键决策点
+分支前、异常捕获处、外部调用前后必须输出日志：
+
+```python
+logger.info(f"开始调用第三方服务 classify，输入文档长度={len(content)}")
+result = service.classify(content)
+logger.info(f"classify 返回成功，主分类={result.get('primary')}，置信度={result.get('confidence')}")
+```
+
+### 4.3 跨语言统一要求
+| 语言 | 要求 |
+|---|---|
+| Python | `raise XxxError(f"上下文: {变量名}={实际值}")` + `logging.getLogger(__name__)` |
+| JavaScript/TS | `throw new Error(`具体上下文 ${JSON.stringify(values)}`)` + `console.error` / logger |
+| Java | `throw new XxxException("上下文: key=" + key + ", actual=" + value)` + SLF4J/MDC |
+| Go | `fmt.Errorf("上下文: key=%s actual=%v: %w", key, val, err)` + `slog` |
+| Rust | `anyhow::bail!("上下文: key={} actual={}, err={}", key, val, err)` + `tracing/log` |

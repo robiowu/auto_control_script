@@ -1,0 +1,89 @@
+---
+description: Python 模块结构规范，约束 __init__.py 写法、包的导入风格与平台相关能力包的组织结构，适用于 Python 项目
+alwaysApply: false
+globs: ["**/*.py"]
+---
+# Python 模块结构规范
+
+## 1. `__init__.py` 最小化原则
+
+**默认规则：`__init__.py` 保持空文件。**
+
+内部工程项目（非 PyPI 发布库）的 `__init__.py` 不应包含任何导入或 `__all__` 声明，除非满足下列明确条件之一：
+
+| 允许写入的情况 | 示例 |
+|---|---|
+| 包作为对外发布的公开 API 边界（PyPI 库） | `__all__ = ["Client", "Config"]` |
+| 包级别必须执行的初始化逻辑 | 注册插件、初始化全局日志 |
+| 有意提供简短别名以隐藏内部深层路径 | 路径超过 3 层且被高频调用 |
+
+## 2. 禁止的模式
+
+```python
+# ❌ 禁止：在 __init__.py 中"贴心地"重导出所有内容
+from .client import OpenAIClient
+from .handler import ResponseHandler
+from .utils import format_response
+
+__all__ = ["OpenAIClient", "ResponseHandler", "format_response"]
+```
+
+**危害：**
+- 隐藏真实文件位置，IDE 跳转和 Debug 困难
+- 新增类时必须同步修改 `__init__.py`，形成隐性维护合同
+- 子模块间互相引用时容易触发循环导入
+- 掩盖模块边界混乱，阻碍重构
+
+## 3. 正确的导入写法
+
+调用方应始终使用**完整路径导入**，不依赖 `__init__.py` 的重导出：
+
+```python
+# ✅ 正确：明确导入路径，来源一目了然
+from mypackage.client import OpenAIClient
+from mypackage.utils import format_response
+
+# ❌ 错误：依赖 __init__.py 的透传，隐藏了真实位置
+from mypackage import OpenAIClient
+```
+
+## 4. 文件结构示例
+
+```
+mypackage/
+├── __init__.py          # 空文件，或仅包含包级初始化逻辑
+├── client.py
+├── handler.py
+└── utils.py
+```
+
+`__init__.py` 内容：
+```python
+# 空文件，或仅在必要时写包级初始化
+```
+
+## 5. 平台相关能力包的结构约定
+
+当一个能力存在多种实现（不同平台、不同通道）时，该能力 MUST 独立成包，并固定下列结构：
+
+```
+mycapability/
+├── __init__.py        # 最小化：只写包说明，不重导出
+├── base.py            # 抽象基类 + 对外返回的数据契约
+├── factory.py         # create_* 工厂 + 对外入口函数
+├── impl_a.py          # 实现 A（如 Windows）
+└── impl_b.py          # 实现 B（如 ADB）
+```
+
+约定：
+
+- **分派集中**：「用哪个实现」的判断只出现在 `factory.py`，调用方不自行判断平台或通道，也不直接实例化实现类。
+- **延迟导入**：有导入期副作用或重量依赖的实现，在工厂函数内部 import，不放在包级，避免无关场景被动加载。
+- **不做回退**：工厂只负责选择；显式指定的实现不可用时直接报错并说明原因，不静默切换到其它实现（见 `general-05-错误处理规范`）。
+- **抽象基类只抽真正的共性**：若两种实现的入参与机制均不同、不可互换（例如按图查找与按字查找），不强行抽基类，只统一它们的返回结构。
+
+调用方写法（完整路径导入，与第 3 节一致）：
+
+```python
+from mypackage.mycapability import factory as mycapability
+```
