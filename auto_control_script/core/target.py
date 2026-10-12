@@ -266,9 +266,29 @@ def resolve_target(selector: str) -> Target:
     )
 
 
+def _current_device_info(serial: str, fallback_product: str) -> tuple:
+    """
+    查询设备当前的 adb 状态与型号。
+
+    Args:
+        serial (str): 设备序列号
+        fallback_product (str): 设备已不在 adb 列表中时沿用的型号
+
+    Returns:
+        tuple: (str 状态, str 型号)；设备不在 adb 列表中时状态为 "offline"
+    """
+    for device in adb.list_devices():
+        if device["serial"] == serial:
+            return device["state"], device["product"] or fallback_product
+    return "offline", fallback_product
+
+
 def refresh(target: Target) -> Target:
     """
     刷新目标的尺寸与可用状态，就地更新后返回。
+
+    设备目标每次刷新都重新查询 `adb devices`，使设备离线与上线能被自动感知，
+    不沿用目标缓存的状态。
 
     Args:
         target (Target): 待刷新的目标
@@ -287,11 +307,8 @@ def refresh(target: Target) -> Target:
             )
         updated = build_window_target(int(target.id))
     elif target.kind == KIND_DEVICE:
-        updated = build_device_target(
-            serial=target.id,
-            state=target.meta.get("state", "device"),
-            product=target.meta.get("product", ""),
-        )
+        state, product = _current_device_info(target.id, target.meta.get("product", ""))
+        updated = build_device_target(serial=target.id, state=state, product=product)
     else:
         raise TargetUnavailableError(
             f"target.refresh: 目标类型非法 (kind={target.kind!r})，"

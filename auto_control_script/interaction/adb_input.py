@@ -18,8 +18,8 @@ from auto_control_script.core.errors import ActionError
 from auto_control_script.core.target import KIND_DEVICE
 from auto_control_script.interaction.base import (
     MODE_BACKGROUND, ACTION_CLICK, ACTION_DOUBLE_CLICK, ACTION_DRAG, ACTION_HOTKEY,
-    ACTION_INPUT_TEXT, ACTION_KEY, ACTION_KINDS, ACTION_MOVE, ACTION_RIGHT_CLICK,
-    ACTION_SCROLL, Action, BaseInteraction,
+    ACTION_INPUT_TEXT, ACTION_KEY, ACTION_KINDS, ACTION_LONG_PRESS, ACTION_MOVE,
+    ACTION_RIGHT_CLICK, ACTION_SCROLL, LONG_PRESS_MS, Action, BaseInteraction,
 )
 from auto_control_script.utils import adb
 
@@ -84,6 +84,13 @@ def perform(serial: str, action: Action) -> None:
         for _ in range(2):
             adb.run(["shell", "input", "tap", int(action.point[0]), int(action.point[1])],
                     serial=serial)
+    elif action.kind == ACTION_LONG_PRESS:
+        # 长按在 adb 侧用起终点相同的 swipe 表达，第四个参数为持续毫秒数
+        duration = int(action.text) if action.text else LONG_PRESS_MS
+        adb.run(["shell", "input", "swipe",
+                 int(action.point[0]), int(action.point[1]),
+                 int(action.point[0]), int(action.point[1]),
+                 duration], serial=serial)
     elif action.kind == ACTION_DRAG:
         adb.run(["shell", "input", "swipe",
                  int(action.point[0]), int(action.point[1]),

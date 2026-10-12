@@ -39,6 +39,7 @@ MODES = (MODE_BACKGROUND, MODE_FOREGROUND)
 ACTION_CLICK = "click"
 ACTION_DOUBLE_CLICK = "double_click"
 ACTION_RIGHT_CLICK = "right_click"
+ACTION_LONG_PRESS = "long_press"
 ACTION_MOVE = "move"
 ACTION_DRAG = "drag"
 ACTION_SCROLL = "scroll"
@@ -47,14 +48,18 @@ ACTION_HOTKEY = "hotkey"
 ACTION_INPUT_TEXT = "input_text"
 
 ACTION_KINDS = (
-    ACTION_CLICK, ACTION_DOUBLE_CLICK, ACTION_RIGHT_CLICK, ACTION_MOVE,
-    ACTION_DRAG, ACTION_SCROLL, ACTION_KEY, ACTION_HOTKEY, ACTION_INPUT_TEXT,
+    ACTION_CLICK, ACTION_DOUBLE_CLICK, ACTION_RIGHT_CLICK, ACTION_LONG_PRESS,
+    ACTION_MOVE, ACTION_DRAG, ACTION_SCROLL, ACTION_KEY, ACTION_HOTKEY,
+    ACTION_INPUT_TEXT,
 )
 """tuple: 全部合法的动作类型。"""
 
 POINT_ACTIONS = (ACTION_CLICK, ACTION_DOUBLE_CLICK, ACTION_RIGHT_CLICK,
-                 ACTION_MOVE, ACTION_DRAG, ACTION_SCROLL)
+                 ACTION_LONG_PRESS, ACTION_MOVE, ACTION_DRAG, ACTION_SCROLL)
 """tuple: 需要坐标的动作类型。"""
+
+LONG_PRESS_MS = 1000
+"""int: 长按动作的默认持续毫秒数，可由 Action.text 覆盖。"""
 
 TEXT_ACTIONS = (ACTION_SCROLL, ACTION_KEY, ACTION_HOTKEY, ACTION_INPUT_TEXT)
 """tuple: 需要文本参数的动作类型。"""
@@ -71,7 +76,8 @@ class Action:
         kind (str): 动作类型，取 ACTION_KINDS 之一
         point (tuple): (x, y) 图像坐标；拖拽时为起点，滚动时表示滚动位置
         end_point (tuple): 拖拽终点，仅 drag 需要
-        text (str): 输入文本（input_text）或按键名（key / hotkey，组合键用 "+" 连接）
+        text (str): 输入文本（input_text）、按键名（key / hotkey，组合键用 "+" 连接），
+            或长按动作的持续毫秒数（long_press，省略时取 LONG_PRESS_MS）
         mode (str): 执行方式，MODE_BACKGROUND 或 MODE_FOREGROUND
         wait_before (float): 动作前的等待秒数
         jitter (float): 在等待基础上附加的随机抖动秒数，0 表示不抖动

@@ -25,7 +25,8 @@ from auto_control_script.core.target import KIND_WINDOW
 from auto_control_script.core.window_manager import WindowManager
 from auto_control_script.interaction.base import (
     MODE_BACKGROUND, ACTION_CLICK, ACTION_DOUBLE_CLICK, ACTION_DRAG, ACTION_HOTKEY,
-    ACTION_INPUT_TEXT, ACTION_KEY, ACTION_MOVE, ACTION_RIGHT_CLICK, ACTION_SCROLL,
+    ACTION_INPUT_TEXT, ACTION_KEY, ACTION_LONG_PRESS, ACTION_MOVE, ACTION_RIGHT_CLICK,
+    ACTION_SCROLL, LONG_PRESS_MS,
     Action, BaseInteraction,
 )
 from auto_control_script.interaction.key_codes import get_vk_code
@@ -112,6 +113,24 @@ def _click(manager: WindowManager, x: int, y: int, button: str) -> None:
     _post(manager.hwnd, up, 0, lparam)
 
 
+def _long_press(manager: WindowManager, x: int, y: int, duration_ms: int) -> None:
+    """
+    后台长按：按下左键后保持指定时长再抬起。
+
+    Args:
+        manager (WindowManager): 窗口几何管理器
+        x (int): 图像横坐标
+        y (int): 图像纵坐标
+        duration_ms (int): 按住时长毫秒数
+    """
+    message_x, message_y = manager.to_message(x, y)
+    lparam = win32api.MAKELONG(message_x, message_y)
+    _post(manager.hwnd, WM_MOUSEMOVE, 0, lparam)
+    _post(manager.hwnd, WM_LBUTTONDOWN, 1, lparam)
+    time.sleep(duration_ms / 1000)
+    _post(manager.hwnd, WM_LBUTTONUP, 0, lparam)
+
+
 class WinBackgroundInteraction(BaseInteraction):
     """
     Windows 后台输入执行器。
@@ -146,6 +165,9 @@ class WinBackgroundInteraction(BaseInteraction):
         elif action.kind == ACTION_DOUBLE_CLICK:
             _click(manager, action.point[0], action.point[1], "left")
             _click(manager, action.point[0], action.point[1], "left")
+        elif action.kind == ACTION_LONG_PRESS:
+            duration = int(action.text) if action.text else LONG_PRESS_MS
+            _long_press(manager, action.point[0], action.point[1], duration)
         elif action.kind == ACTION_MOVE:
             message_x, message_y = manager.to_message(action.point[0], action.point[1])
             _post(hwnd, WM_MOUSEMOVE, 0, win32api.MAKELONG(message_x, message_y))

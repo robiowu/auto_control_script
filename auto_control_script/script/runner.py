@@ -17,6 +17,7 @@ import os
 import threading
 import time
 import uuid
+from typing import Optional
 
 from auto_control_script.capture import factory as capture
 from auto_control_script.core import target as target_module
@@ -24,7 +25,9 @@ from auto_control_script.core.errors import AutoControlError, RunnerBusyError
 from auto_control_script.core.frame import to_jpeg_bytes
 from auto_control_script.core.settings import SETTINGS, runs_dir
 from auto_control_script.interaction import factory as interaction
-from auto_control_script.interaction.base import Action
+from auto_control_script.interaction.base import (
+    ACTION_CLICK, ACTION_DRAG, ACTION_INPUT_TEXT, ACTION_KEY, ACTION_SCROLL, Action,
+)
 from auto_control_script.matcher import factory as matcher
 from auto_control_script.script import model as script_model
 from auto_control_script.script.model import (
@@ -289,7 +292,7 @@ class Runner:
         if step.type == STEP_CLICK:
             point = self._resolve_point(step)
             action = Action(
-                kind=interaction.ACTION_CLICK, point=point,
+                kind=ACTION_CLICK, point=point,
                 mode=params.get("mode", SETTINGS["input_mode"]),
                 wait_before=float(params.get("wait_before", 0.0)),
                 retry=int(params.get("retry", 0)),
@@ -306,36 +309,39 @@ class Runner:
             point = self._resolve_point(step) if (step.ref or params.get("point")) else None
             if point:
                 interaction.perform(self.target, Action(
-                    kind=interaction.ACTION_CLICK, point=point,
+                    kind=ACTION_CLICK, point=point,
                     mode=params.get("mode", SETTINGS["input_mode"])))
             action = Action(
-                kind=interaction.ACTION_INPUT_TEXT, text=text,
+                kind=ACTION_INPUT_TEXT, text=text,
                 mode=params.get("mode", SETTINGS["input_mode"]),
             )
             interaction.perform(self.target, action)
             return {"text": text, "mode": action.mode}
 
         if step.type == STEP_KEY:
-            interaction.perform(self.target, Action(
-                kind=interaction.ACTION_KEY, text=params.get("key"),
-                mode=params.get("mode", SETTINGS["input_mode"])))
-            return {"key": params.get("key")}
+            action = Action(
+                kind=ACTION_KEY, text=params.get("key"),
+                mode=params.get("mode", SETTINGS["input_mode"]))
+            interaction.perform(self.target, action)
+            return {"key": params.get("key"), "mode": action.mode}
 
         if step.type == STEP_DRAG:
             start = self._resolve_point(step)
             end = self._scale_point(tuple(params.get("end_point")))
-            interaction.perform(self.target, Action(
-                kind=interaction.ACTION_DRAG, point=start, end_point=end,
-                mode=params.get("mode", SETTINGS["input_mode"])))
-            return {"point": start, "end_point": end}
+            action = Action(
+                kind=ACTION_DRAG, point=start, end_point=end,
+                mode=params.get("mode", SETTINGS["input_mode"]))
+            interaction.perform(self.target, action)
+            return {"point": start, "end_point": end, "mode": action.mode}
 
         if step.type == STEP_SCROLL:
             point = self._resolve_point(step)
-            interaction.perform(self.target, Action(
-                kind=interaction.ACTION_SCROLL, point=point,
+            action = Action(
+                kind=ACTION_SCROLL, point=point,
                 text=str(params.get("amount", 0)),
-                mode=params.get("mode", SETTINGS["input_mode"])))
-            return {"point": point, "amount": params.get("amount", 0)}
+                mode=params.get("mode", SETTINGS["input_mode"]))
+            interaction.perform(self.target, action)
+            return {"point": point, "amount": params.get("amount", 0), "mode": action.mode}
 
         if step.type == STEP_CONDITION:
             expect_found = bool(params.get("expect_found", True))
@@ -558,9 +564,12 @@ def session_to_dict(session) -> dict:
     }
 
 
-def list_runs() -> list:
+def list_runs(target_id: Optional[str] = None) -> list:
     """
-    列出历史运行记录。
+    列出历史运行记录，可按目标过滤。
+
+    Args:
+        target_id (str): 目标标识，None 时返回全部目标的运行记录
 
     Returns:
         list: 运行会话字典列表，按开始时间倒序
@@ -575,6 +584,8 @@ def list_runs() -> list:
             continue
         with open(path, encoding="utf-8") as file:
             sessions.append(json.load(file))
+    if target_id is not None:
+        sessions = [item for item in sessions if item.get("target_id") == target_id]
     sessions.sort(key=lambda item: item.get("started_at") or 0, reverse=True)
     return sessions
 

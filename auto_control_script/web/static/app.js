@@ -19,7 +19,11 @@ const state = {
   runId: "",
   eventSource: null,
   imageScale: 1,
+  previewTimer: null,
+  dragIndex: null,
 };
+
+const PREVIEW_INTERVAL_MS = 1000;
 
 const el = (id) => document.getElementById(id);
 
@@ -114,6 +118,18 @@ async function refreshPreview() {
   el("preview-overlay").innerHTML = "";
 }
 
+function startPreviewAutoRefresh() {
+  if (state.previewTimer) {
+    clearInterval(state.previewTimer);
+  }
+  state.previewTimer = setInterval(() => {
+    if (document.hidden || !state.targetId) {
+      return;
+    }
+    refreshPreview().catch((error) => console.warn("预览刷新失败", error));
+  }, PREVIEW_INTERVAL_MS);
+}
+
 function setupSelection() {
   const overlay = el("preview-overlay");
   let startPoint = null;
@@ -181,6 +197,37 @@ async function recognizePreview() {
 
 // ------------------------------------------------------------------ 步骤编排
 
+const STEP_FIELD_HINTS = {
+  wait: { text: null, point: null, end: null, region: null, extra: "seconds=2" },
+  capture: { text: null, point: null, end: null, region: null, extra: "path=wgc" },
+  find_image: { text: "模板图片路径", point: null, end: null, region: "限定查找区域", extra: "threshold=0.95" },
+  find_text: { text: "目标文字", point: null, end: null, region: "限定查找区域", extra: "exact=true" },
+  click: { text: null, point: "点击坐标", end: null, region: null, extra: "mode=background" },
+  input_text: { text: "待输入文本", point: "先点击的坐标（可留空）", end: null, region: null, extra: "mode=background" },
+  key: { text: "按键名或组合键", point: null, end: null, region: null, extra: "mode=background" },
+  drag: { text: null, point: "起点坐标", end: "终点坐标", region: null, extra: "mode=background" },
+  scroll: { text: "滚动量（正数向上）", point: "滚动位置", end: null, region: null, extra: "mode=background" },
+  condition: { text: null, point: null, end: null, region: null, extra: "expect_found=true;jump_to=s3" },
+  loop: { text: null, point: null, end: null, region: null, extra: "repeat=3;jump_to=s2" },
+  log: { text: "日志内容", point: null, end: null, region: null, extra: null },
+};
+
+function applyStepTypeFields() {
+  const hints = STEP_FIELD_HINTS[el("step-type").value] || {};
+  ["text", "point", "end", "region", "extra"].forEach((name) => {
+    const label = el(`label-step-${name}`);
+    const input = el(`step-${name}`);
+    const hint = hints[name];
+    if (hint) {
+      label.style.display = "";
+      input.placeholder = hint;
+    } else {
+      label.style.display = "none";
+      input.value = "";
+    }
+  });
+}
+
 function renderSteps(currentIndex) {
   const list = el("step-list");
   list.innerHTML = "";
@@ -197,21 +244,36 @@ function renderSteps(currentIndex) {
       (step.params && step.params.point ? ` 坐标=${step.params.point}` : "") +
       (step.ref ? ` 引用=${step.ref}` : "");
     item.appendChild(summary);
-    ["↑", "↓", "删"].forEach((label, buttonIndex) => {
-      const button = document.createElement("button");
-      button.textContent = label;
-      button.onclick = () => {
-        if (buttonIndex === 0 && index > 0) {
-          [state.steps[index - 1], state.steps[index]] = [state.steps[index], state.steps[index - 1]];
-        } else if (buttonIndex === 1 && index < state.steps.length - 1) {
-          [state.steps[index + 1], state.steps[index]] = [state.steps[index], state.steps[index + 1]];
-        } else if (buttonIndex === 2) {
-          state.steps.splice(index, 1);
-        }
-        renderSteps(currentIndex);
-      };
-      item.appendChild(button);
+    item.draggable = true;
+    item.addEventListener("dragstart", () => {
+      state.dragIndex = index;
+      item.classList.add("dragging");
     });
+    item.addEventListener("dragend", () => {
+      state.dragIndex = null;
+      item.classList.remove("dragging");
+    });
+    item.addEventListener("dragover", (event) => {
+      event.preventDefault();
+    });
+    item.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const from = state.dragIndex;
+      state.dragIndex = null;
+      if (from === null || from === index) {
+        return;
+      }
+      const [moved] = state.steps.splice(from, 1);
+      state.steps.splice(index, 0, moved);
+      renderSteps(currentIndex);
+    });
+    const removeButton = document.createElement("button");
+    removeButton.textContent = "删";
+    removeButton.onclick = () => {
+      state.steps.splice(index, 1);
+      renderSteps(currentIndex);
+    };
+    item.appendChild(removeButton);
     list.appendChild(item);
   });
 }
@@ -321,6 +383,17 @@ function logLine(text, className) {
   box.scrollTop = box.scrollHeight;
 }
 
+function appendSnapshot(snapshotId, index) {
+  const box = el("run-log");
+  const image = document.createElement("img");
+  image.className = "snapshot";
+  image.loading = "lazy";
+  image.src = `/api/runs/${state.runId}/snapshots/${snapshotId}.jpg`;
+  image.alt = `步骤 ${index + 1} 的画面快照`;
+  box.appendChild(image);
+  box.scrollTop = box.scrollHeight;
+}
+
 function subscribeEvents(runId) {
   if (state.eventSource) {
     state.eventSource.close();
@@ -337,6 +410,9 @@ function subscribeEvents(runId) {
       );
       if (record.error) {
         logLine(`    原因：${record.error}`, "failed");
+      }
+      if (record.snapshot_id) {
+        appendSnapshot(record.snapshot_id, record.index);
       }
       renderSteps(record.index);
     });
@@ -386,6 +462,7 @@ function runAction(name) {
 // ------------------------------------------------------------------ 初始化
 
 function bindEvents() {
+  el("step-type").onchange = applyStepTypeFields;
   el("btn-refresh-targets").onclick = () => refreshTargets().catch((error) => toast(error.message, true));
   el("target-select").onchange = () => {
     state.targetId = el("target-select").value;
@@ -468,6 +545,8 @@ function bindEvents() {
 window.addEventListener("load", () => {
   bindEvents();
   setupSelection();
+  startPreviewAutoRefresh();
+  applyStepTypeFields();
   refreshTargets()
     .then(() => refreshPreview())
     .then(() => refreshScriptList())

@@ -147,3 +147,16 @@ main {
 }
 
 #toast .item.error { background: #c0392b; }
+
+/* 步骤拖拽排序 */
+#step-list li { cursor: move; }
+#step-list li.dragging { opacity: 0.4; }
+
+/* 运行日志中的画面快照 */
+#run-log .snapshot {
+  display: block;
+  max-width: 240px;
+  margin: 4px 0 6px;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+}

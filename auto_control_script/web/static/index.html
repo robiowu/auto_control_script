@@ -71,12 +71,12 @@
           </select>
         </label>
         <label>步骤 id <input id="step-id" placeholder="例如 s1"></label>
-        <label>文本/按键 <input id="step-text" placeholder="文字、按键名或滚动量"></label>
-        <label>坐标 <input id="step-point" placeholder="x,y"></label>
-        <label>终点 <input id="step-end" placeholder="x,y"></label>
-        <label>区域 <input id="step-region" placeholder="x1,y1,x2,y2"></label>
+        <label id="label-step-text">文本/按键 <input id="step-text" placeholder="文字、按键名或滚动量"></label>
+        <label id="label-step-point">坐标 <input id="step-point" placeholder="x,y"></label>
+        <label id="label-step-end">终点 <input id="step-end" placeholder="x,y"></label>
+        <label id="label-step-region">区域 <input id="step-region" placeholder="x1,y1,x2,y2"></label>
         <label>引用 <input id="step-ref" placeholder="引用查找结果的步骤 id"></label>
-        <label>备用参数 <input id="step-extra" placeholder="seconds / repeat / jump_to 等"></label>
+        <label id="label-step-extra">备用参数 <input id="step-extra" placeholder="seconds / repeat / jump_to 等"></label>
         <label>失败策略
           <select id="step-onfail">
             <option value="abort">中止</option>

@@ -76,15 +76,15 @@
 
 - [x] T011 [P] [US1] 创建 `auto_control_script/input_win.py`：后台窗口消息投递实现，覆盖单击/双击/右键/移动/拖拽/滚轮/单键/组合键/文本输入（中文经剪贴板或逐字符投递）；坐标越界报出目标实际尺寸，目标失效或投递失败报可读错误（FR-012、FR-014~FR-019，D5）
 - [x] T012 [P] [US1] 创建 `auto_control_script/capture_adb.py`：以 `adb exec-out screencap -p` 取图，做 PNG 头尾校验，产出与 Windows 侧一致的 `Frame`（FR-008、D6）
-- [ ] T013 [US1] 创建 `auto_control_script/input_adb.py`：经 `adb shell input` 下发 tap / swipe / 长按 / text / keyevent（依赖 T005 的设备目标解析）
-  - 缺口（2026-10-12 代码核实）：缺「长按」——`ACTION_KINDS` 中无 long_press，adb 侧只有 tap / swipe / text / keyevent
+- [x] T013 [US1] 创建 `auto_control_script/input_adb.py`：经 `adb shell input` 下发 tap / swipe / 长按 / text / keyevent（依赖 T005 的设备目标解析）
+  - 原缺口（已于 2026-10-12 补齐）：缺「长按」——`ACTION_KINDS` 中无 long_press，adb 侧只有 tap / swipe / text / keyevent
 - [x] T014 [P] [US1] 创建 `auto_control_script/ocr.py`：`OcrResult`/`TextItem` 定义、双通道工厂、按阅读顺序排序、区域识别坐标回写、结构化提取（`extract` 失败返回 `None` 不猜值）（FR-020~FR-025）
-- [ ] T015 [P] [US1] 创建 `auto_control_script/ocr_builtin.py`：系统内置 OCR 通道；**该通道无真实置信度，`confidence` 置空并置 `confidence_available=False`，不得伪造数值**；固定复用单个事件循环（FR-023、D3）
-  - 缺口（2026-10-12 代码核实）：未复用单个事件循环——直接调 `winocr.recognize_pil_sync`，代码内无 asyncio 相关实现
+- [x] T015 [P] [US1] 创建 `auto_control_script/ocr_builtin.py`：系统内置 OCR 通道；**该通道无真实置信度，`confidence` 置空并置 `confidence_available=False`，不得伪造数值**；固定复用单个事件循环（FR-023、D3）
+  - 原缺口（已于 2026-10-12 补齐）：未复用单个事件循环——直接调 `winocr.recognize_pil_sync`，代码内无 asyncio 相关实现
 - [x] T016 [P] [US1] 创建 `auto_control_script/ocr_precise.py`：高精度通道（onnxruntime 推理）；未安装即报出「缺少什么」的具体说明，不回退到内置通道（FR-024、D2）
 - [x] T017 [US1] 创建 `auto_control_script/matcher.py`：由 `find_pic.py` 重构而来，提供模板匹配与按图/按字查找，统一返回 `MatchResult`；未命中返回 `found=False` 且不带坐标并给出原因（FR-025、FR-026）
-- [ ] T018 [P] [US1] 创建 `auto_control_script/script_model.py`：`Script`/`Step`/`RunSession`/`StepRecord` 模型与 JSON 序列化；加载时校验步骤引用（指向不存在或非查找类步骤即报错），坐标为固定值时记录基准分辨率（FR-027~FR-029）
-  - 缺口（2026-10-12 代码核实）：坐标为固定值时未自动记录基准分辨率——`base_width/base_height` 存在但 Web 端恒写 0
+- [x] T018 [P] [US1] 创建 `auto_control_script/script_model.py`：`Script`/`Step`/`RunSession`/`StepRecord` 模型与 JSON 序列化；加载时校验步骤引用（指向不存在或非查找类步骤即报错），坐标为固定值时记录基准分辨率（FR-027~FR-029）
+  - 原缺口（已于 2026-10-12 补齐）：坐标为固定值时未自动记录基准分辨率——`base_width/base_height` 存在但 Web 端恒写 0
 - [x] T019 [US1] 创建 `auto_control_script/runner.py`：步骤调度与运行控制（start/pause/resume/stop/step_once/retry_step），在步骤边界暂停、查找类步骤的超时与失败策略（中止/继续/重试）、逐步执行记录与画面快照（依赖 T018）
 - [x] T020 [US1] 创建 `auto_control_script/cli.py`：`targets`/`capture`/`ocr`/`input`/`run`/`script` 六个子命令，支持 `--json` 机器可读输出与人类可读输出，错误写 stderr 并按 `contracts/cli.md` 的退出码返回（FR-042、FR-043）
 - [x] T021 [US1] 创建 `auto_control_script/__main__.py`：提供 `python -m auto_control_script` 入口并转调 `cli.py`
@@ -105,16 +105,16 @@
 - [x] T025 [US2] 创建 `auto_control_script/web/app.py`：FastAPI 应用装配、静态资源挂载、目标查询与画面预览接口（JPEG）、统一错误响应与 `contracts/web-api.md` 中的错误码（FR-034~FR-036、FR-040）
 - [x] T026 [US2] 在 `auto_control_script/web/app.py` 增加 OCR 与查找接口，以及两类通道的可用状态查询（返回缺失的前置条件说明）（FR-023、FR-024、FR-040）
 - [x] T027 [US2] 在 `auto_control_script/web/app.py` 增加脚本管理接口：列表、读取、新建、保存、删除、导入、导出、校验（FR-029、FR-038）
-- [ ] T028 [US2] 在 `auto_control_script/web/app.py` 增加运行控制接口与 SSE 事件流（`step_started`/`step_finished`/`step_failed`/`session_state`/`log`）、会话详情、历史列表与快照读取（FR-030、FR-031、FR-039、FR-041、D9）
-  - 缺口（2026-10-12 代码核实）：SSE 实际事件名为 step_success / step_failed / step_skipped，契约点名的 step_started / step_finished / log 未产出
+- [x] T028 [US2] 在 `auto_control_script/web/app.py` 增加运行控制接口与 SSE 事件流（`step_started`/`step_finished`/`step_failed`/`session_state`/`log`）、会话详情、历史列表与快照读取（FR-030、FR-031、FR-039、FR-041、D9）
+  - 原缺口（已于 2026-10-12 补齐）：SSE 实际事件名为 step_success / step_failed / step_skipped，契约点名的 step_started / step_finished / log 未产出
 - [x] T029 [P] [US2] 创建 `auto_control_script/web/static/index.html`：目标选择器、画面预览区、步骤列表区、运行控制台四大区域的页面骨架
 - [x] T030 [P] [US2] 创建 `auto_control_script/web/static/style.css`：四大区域的基础样式
-- [ ] T031 [US2] 创建 `auto_control_script/web/static/app.js`：目标选择与切换、画面预览定时刷新、在预览上拖拽框选区域与取点并把结果填入步骤参数（FR-035、FR-036）
-  - 缺口（2026-10-12 代码核实）：预览无定时刷新——只有 load 与按钮触发，无 setInterval 轮询
-- [ ] T032 [US2] 在 `auto_control_script/web/static/app.js` 增加步骤编辑器：步骤增删改、拖拽排序、按类型渲染参数表单、引用前序步骤的查找结果作为坐标来源（FR-027、FR-028、FR-037）
-  - 缺口（2026-10-12 代码核实）：排序用 ↑↓ 按钮而非拖拽；参数表单为单一固定表单，未按步骤类型动态渲染
-- [ ] T033 [US2] 在 `auto_control_script/web/static/app.js` 增加运行控制台：SSE 订阅、逐步状态/耗时/日志/快照展示、开始/暂停/继续/停止/单步/单步重试（FR-030、FR-039、FR-041）
-  - 缺口（2026-10-12 代码核实）：快照未展示——只把 `record.detail` 当文本打印，未渲染 snapshot_id 对应图片
+- [x] T031 [US2] 创建 `auto_control_script/web/static/app.js`：目标选择与切换、画面预览定时刷新、在预览上拖拽框选区域与取点并把结果填入步骤参数（FR-035、FR-036）
+  - 原缺口（已于 2026-10-12 补齐）：预览无定时刷新——只有 load 与按钮触发，无 setInterval 轮询
+- [x] T032 [US2] 在 `auto_control_script/web/static/app.js` 增加步骤编辑器：步骤增删改、拖拽排序、按类型渲染参数表单、引用前序步骤的查找结果作为坐标来源（FR-027、FR-028、FR-037）
+  - 原缺口（已于 2026-10-12 补齐）：排序用 ↑↓ 按钮而非拖拽；参数表单为单一固定表单，未按步骤类型动态渲染
+- [x] T033 [US2] 在 `auto_control_script/web/static/app.js` 增加运行控制台：SSE 订阅、逐步状态/耗时/日志/快照展示、开始/暂停/继续/停止/单步/单步重试（FR-030、FR-039、FR-041）
+  - 原缺口（已于 2026-10-12 补齐）：快照未展示——只把 `record.detail` 当文本打印，未渲染 snapshot_id 对应图片
 - [x] T034 [US2] 在 `auto_control_script/cli.py` 增加 `web` 子命令：启动服务、仅监听本机回环地址并打印可访问地址（FR-034）
 
 ---
@@ -127,11 +127,11 @@
 
 ### 实现任务
 
-- [ ] T035 [US3] 在 `auto_control_script/input_win.py` 增加前台输入实现：扫描码级键鼠点击与按键、滚轮、剪贴板中文输入，执行前给出将激活目标窗口的提示（FR-013、D5）
-  - 缺口（2026-10-12 代码核实）：前台执行前未给出「将激活目标窗口」的提示——直接调 `bring_to_front()`，模块内无 logger
+- [x] T035 [US3] 在 `auto_control_script/input_win.py` 增加前台输入实现：扫描码级键鼠点击与按键、滚轮、剪贴板中文输入，执行前给出将激活目标窗口的提示（FR-013、D5）
+  - 原缺口（已于 2026-10-12 补齐）：前台执行前未给出「将激活目标窗口」的提示——直接调 `bring_to_front()`，模块内无 logger
 - [x] T036 [US3] 在 `auto_control_script/interaction.py` 完成后台/前台模式分派，支持逐步指定 `mode` 且互不影响（FR-012、FR-013）
-- [ ] T037 [US3] 在 `auto_control_script/runner.py` 透传步骤级输入方式，并把实际使用的方式写入 `StepRecord.detail`（FR-049）
-  - 缺口（2026-10-12 代码核实）：仅 click 与 input_text 把 mode 写回 `StepRecord.detail`，key / drag / scroll 未回写
+- [x] T037 [US3] 在 `auto_control_script/runner.py` 透传步骤级输入方式，并把实际使用的方式写入 `StepRecord.detail`（FR-049）
+  - 原缺口（已于 2026-10-12 补齐）：仅 click 与 input_text 把 mode 写回 `StepRecord.detail`，key / drag / scroll 未回写
 
 ---
 
@@ -143,12 +143,12 @@
 
 ### 实现任务
 
-- [ ] T038 [P] [US4] 在 `auto_control_script/target.py` 增加设备状态刷新与连接方式（usb/tcp）、adb 状态等差异信息（FR-003）
-  - 缺口（2026-10-12 代码核实）：设备 `refresh()` 沿用 `target.meta` 里缓存的 state，未重新查 `adb devices`，离线/上线不会自动翻转
+- [x] T038 [P] [US4] 在 `auto_control_script/target.py` 增加设备状态刷新与连接方式（usb/tcp）、adb 状态等差异信息（FR-003）
+  - 原缺口（已于 2026-10-12 补齐）：设备 `refresh()` 沿用 `target.meta` 里缓存的 state，未重新查 `adb devices`，离线/上线不会自动翻转
 - [x] T039 [P] [US4] 在 `auto_control_script/capture_adb.py` 与 `auto_control_script/input_adb.py` 支持按 serial 区分多设备，保证并发取图与输入互不串台（FR-008、FR-016、D6）
 - [x] T040 [US4] 在 `auto_control_script/runner.py` 增加同目标运行互斥：同一目标已有运行中的会话时抛 `TARGET_BUSY`，停止单个目标不影响其他目标
-- [ ] T041 [US4] 在 `auto_control_script/web/app.py` 与 `web/static/app.js` 支持多目标切换、绑定与按目标筛选运行记录（FR-035）
-  - 缺口（2026-10-12 代码核实）：按目标筛选运行记录未实现——`/api/runs` 无 target 过滤参数，前端也未调用该接口
+- [x] T041 [US4] 在 `auto_control_script/web/app.py` 与 `web/static/app.js` 支持多目标切换、绑定与按目标筛选运行记录（FR-035）
+  - 原缺口（已于 2026-10-12 补齐）：按目标筛选运行记录未实现——`/api/runs` 无 target 过滤参数，前端也未调用该接口
 
 ---
 

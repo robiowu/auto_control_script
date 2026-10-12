@@ -360,6 +360,14 @@ def create_run(request: RunRequest):
     """创建并启动一次运行。"""
     script = script_model.resolve_script(request.script)
     target = _resolve(request.target_id)
+    if not script.base_width or not script.base_height:
+        script.base_width = target.width
+        script.base_height = target.height
+        script_model.save(script)
+        logger.info(
+            f"web.app.create_run: 脚本 {script.name!r} 未记录基准分辨率，"
+            f"按目标 {target.id}（{target.name!r}）的实际尺寸记为 {target.width}x{target.height}"
+        )
     executor = runner.Runner(script, target)
     if request.from_step:
         executor.session.current_step_index = request.from_step - 2
@@ -389,9 +397,9 @@ def _get_run(run_id: str):
 
 @app.get("/api/runs")
 @_guard
-def list_runs():
-    """列出历史运行记录。"""
-    return runner.list_runs()
+def list_runs(target_id: Optional[str] = None):
+    """列出历史运行记录，可按目标标识过滤。"""
+    return runner.list_runs(target_id=target_id)
 
 
 @app.get("/api/runs/{run_id}")
@@ -451,9 +459,26 @@ def read_snapshot(run_id: str, snapshot_id: str):
 
 
 @app.get("/api/runs/{run_id}/events")
+def _record_log(record) -> dict:
+    """
+    把执行记录转换为一行运行日志。
+
+    Args:
+        record (StepRecord): 执行记录
+
+    Returns:
+        dict: 含 message 的日志条目
+    """
+    suffix = f"，原因：{record.error}" if record.error else ""
+    return {"message": f"步骤 {record.index}（{record.step_id}）{record.status}{suffix}"}
+
+
 def run_events(run_id: str):
     """
     以 SSE 推送运行状态与逐步日志。
+
+    步骤开始发 step_started、结束发 step_finished 与 step_<状态>，每条记录另发一条 log，
+    循环末尾发 session_state。
 
     Args:
         run_id (str): 运行标识
@@ -473,10 +498,14 @@ def run_events(run_id: str):
             while sent < len(records):
                 record = records[sent]
                 sent += 1
+                payload = json.dumps(runner._record_to_dict(record), ensure_ascii=False)
                 if record.status == runner.STATUS_RUNNING:
+                    yield f"event: step_started\ndata: {payload}\n\n"
                     continue
-                yield (f"event: step_{record.status}\n"
-                       f"data: {json.dumps(runner._record_to_dict(record), ensure_ascii=False)}\n\n")
+                yield f"event: step_{record.status}\ndata: {payload}\n\n"
+                yield f"event: step_finished\ndata: {payload}\n\n"
+                yield (f"event: log\n"
+                       f"data: {json.dumps(_record_log(record), ensure_ascii=False)}\n\n")
             state_payload = json.dumps(
                 {"state": session.state, "current_step_index": session.current_step_index},
                 ensure_ascii=False,

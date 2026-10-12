@@ -27,7 +27,9 @@ from auto_control_script.core.frame import Frame, crop as crop_frame, load as lo
 from auto_control_script.core.settings import SETTINGS, user_dir
 from auto_control_script.core.window_manager import WindowManager
 from auto_control_script.interaction import factory as interaction
-from auto_control_script.interaction.base import Action
+from auto_control_script.interaction.base import (
+    ACTION_CLICK, ACTION_DRAG, ACTION_INPUT_TEXT, ACTION_KEY, ACTION_SCROLL, Action,
+)
 from auto_control_script.matcher import factory as matcher
 
 
@@ -297,7 +299,7 @@ class MyGameCase:
             mode (str): 执行方式，None 时取配置默认值
         """
         interaction.perform(self.target, Action(
-            kind=interaction.ACTION_CLICK, point=(x, y),
+            kind=ACTION_CLICK, point=(x, y),
             mode=mode or SETTINGS["input_mode"]))
 
     def click_feature(self, feature: FeaturePic) -> bool:
@@ -365,7 +367,7 @@ class MyGameCase:
             mode (str): 执行方式
         """
         interaction.perform(self.target, Action(
-            kind=interaction.ACTION_INPUT_TEXT, text=text,
+            kind=ACTION_INPUT_TEXT, text=text,
             mode=mode or SETTINGS["input_mode"]))
 
     def press_key(self, key: str, mode: Optional[str] = None) -> None:
@@ -377,7 +379,7 @@ class MyGameCase:
             mode (str): 执行方式
         """
         interaction.perform(self.target, Action(
-            kind=interaction.ACTION_KEY, text=key,
+            kind=ACTION_KEY, text=key,
             mode=mode or SETTINGS["input_mode"]))
 
     def scroll(self, amount: int, x: int, y: int, mode: Optional[str] = None) -> None:
@@ -391,7 +393,7 @@ class MyGameCase:
             mode (str): 执行方式
         """
         interaction.perform(self.target, Action(
-            kind=interaction.ACTION_SCROLL, point=(x, y), text=str(amount),
+            kind=ACTION_SCROLL, point=(x, y), text=str(amount),
             mode=mode or SETTINGS["input_mode"]))
 
     def drag(self, start: tuple, end: tuple, mode: Optional[str] = None) -> None:
@@ -404,7 +406,7 @@ class MyGameCase:
             mode (str): 执行方式
         """
         interaction.perform(self.target, Action(
-            kind=interaction.ACTION_DRAG, point=tuple(start), end_point=tuple(end),
+            kind=ACTION_DRAG, point=tuple(start), end_point=tuple(end),
             mode=mode or SETTINGS["input_mode"]))
 
     def finish_log(self) -> None:

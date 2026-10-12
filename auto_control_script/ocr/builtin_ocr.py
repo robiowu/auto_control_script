@@ -17,6 +17,8 @@ ocr/builtin_ocr.py - 系统内置 OCR 通道模块
 - 必须先导入高精度通道的底层库，原因见 precise_ocr.preload 的说明
 """
 
+import asyncio
+
 import cv2
 from PIL import Image
 
@@ -28,6 +30,26 @@ LANGUAGE_INSTALL_HINT = (
     "Add-WindowsCapability -Online -Name \"Language.OCR~~~{tag}~0.0.1.0\""
 )
 """str: 缺失 Windows OCR 语言包时的安装命令模板。"""
+
+_loop = None
+"""asyncio.AbstractEventLoop: 内置通道复用的事件循环，首次识别时创建。"""
+
+
+def _get_loop() -> asyncio.AbstractEventLoop:
+    """
+    获取内置通道复用的事件循环，未创建或已关闭时新建并设为当前。
+
+    系统 OCR 的异步接口需要一个事件循环；每次识别新建循环会累积未关闭的循环，
+    故在整个进程内固定复用同一个。
+
+    Returns:
+        asyncio.AbstractEventLoop: 可复用的事件循环
+    """
+    global _loop
+    if _loop is None or _loop.is_closed():
+        _loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_loop)
+    return _loop
 
 
 class BuiltinOcr(BaseOcr):
@@ -142,7 +164,8 @@ class BuiltinOcr(BaseOcr):
         self._ensure_language(language)
         rgb = cv2.cvtColor(pixels, cv2.COLOR_BGR2RGB)
         pil_image = Image.fromarray(rgb)
-        result = winocr.recognize_pil_sync(pil_image, lang=language)
+        result = _get_loop().run_until_complete(
+            winocr.recognize_pil(pil_image, lang=language))
 
         items = []
         for line in result.get("lines", []):

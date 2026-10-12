@@ -14,6 +14,7 @@ interaction/win_foreground.py - Windows 前台输入模块
 - 本方式会改变前台焦点与真实鼠标位置，执行期间使用者不应操作键鼠
 """
 
+import logging
 import time
 
 import pydirectinput
@@ -26,9 +27,11 @@ from auto_control_script.core.target import KIND_WINDOW
 from auto_control_script.core.window_manager import WindowManager
 from auto_control_script.interaction.base import (
     MODE_FOREGROUND, ACTION_CLICK, ACTION_DOUBLE_CLICK, ACTION_DRAG, ACTION_HOTKEY,
-    ACTION_INPUT_TEXT, ACTION_KEY, ACTION_MOVE, ACTION_RIGHT_CLICK, ACTION_SCROLL,
-    Action, BaseInteraction,
+    ACTION_INPUT_TEXT, ACTION_KEY, ACTION_LONG_PRESS, ACTION_MOVE, ACTION_RIGHT_CLICK,
+    ACTION_SCROLL, LONG_PRESS_MS, Action, BaseInteraction,
 )
+
+logger = logging.getLogger(__name__)
 
 pydirectinput.FAILSAFE = False
 pydirectinput.PAUSE = 0
@@ -68,10 +71,15 @@ class WinForegroundInteraction(BaseInteraction):
         """
         manager = WindowManager(int(target.id))
         manager.refresh()
+        logger.info(
+            f"interaction.win_foreground.WinForegroundInteraction.execute: "
+            f"前台方式将激活目标窗口 {target.id}（{target.name!r}），会改变前台焦点与真实鼠标位置，"
+            f"执行期间请勿操作键鼠"
+        )
         manager.bring_to_front()
 
         if action.kind in (ACTION_CLICK, ACTION_RIGHT_CLICK, ACTION_DOUBLE_CLICK,
-                           ACTION_MOVE, ACTION_DRAG, ACTION_SCROLL):
+                           ACTION_LONG_PRESS, ACTION_MOVE, ACTION_DRAG, ACTION_SCROLL):
             screen_x, screen_y = manager.to_screen(action.point[0], action.point[1])
 
         if action.kind == ACTION_CLICK:
@@ -80,6 +88,11 @@ class WinForegroundInteraction(BaseInteraction):
             pydirectinput.rightClick(screen_x, screen_y)
         elif action.kind == ACTION_DOUBLE_CLICK:
             pydirectinput.doubleClick(screen_x, screen_y)
+        elif action.kind == ACTION_LONG_PRESS:
+            duration = int(action.text) if action.text else LONG_PRESS_MS
+            pydirectinput.mouseDown(screen_x, screen_y)
+            time.sleep(duration / 1000)
+            pydirectinput.mouseUp(screen_x, screen_y)
         elif action.kind == ACTION_MOVE:
             pydirectinput.moveTo(screen_x, screen_y)
         elif action.kind == ACTION_DRAG:
