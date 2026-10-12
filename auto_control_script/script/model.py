@@ -350,7 +350,9 @@ def save(script: Script, path: Optional[str] = None) -> str:
             f"script_model.save: 脚本 {script.name!r} 校验未通过：\n" + "\n".join(errors)
         )
     path = path or script_path(script.name)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
     with open(path, "w", encoding="utf-8") as file:
         json.dump(to_dict(script), file, ensure_ascii=False, indent=2)
     return path

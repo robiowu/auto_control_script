@@ -46,8 +46,9 @@
 - [x] T001 更新 `requirements.txt`：写入保留依赖（`pywin32`、`opencv-python`、`pillow`、`numpy`）与新增依赖（`pydirectinput`、`pyperclip`、`winocr`、`rapidocr-onnxruntime`、`onnxruntime`、`windows-capture`、`fastapi`、`uvicorn`），并移除 `pyautogui`；用注释标出 `windows-capture` 与 `rapidocr-onnxruntime` 为可选依赖
 - [x] T002 更新 `setup.py`：`packages` 改为 `['auto_control_script', 'auto_control_script.web']`，通过 `package_data`/`MANIFEST.in` 声明 `web/static/` 静态资源，`install_requires` 与 `requirements.txt` 对齐（FR-048）
 - [x] T003 [P] 创建 `auto_control_script/settings.py`：集中存放默认配置与可选 JSON 覆盖；**文件名必须为 `settings.py`**，根目录 `.gitignore` 忽略 `config.py`，命名为 `config.py` 会导致文件不入库
-- [ ] T004 在 conda 环境 `python313` 下执行 `conda run -n python313 pip install -r requirements.txt`，并逐个验证 `pywin32`、`cv2`、`winocr`、`onnxruntime`、`fastapi`、`pydirectinput` 可导入（当前环境仅有 pillow，必须补装）
-  - 待确认（2026-10-12）：需在 python313 环境实跑 pip install 并逐项 import 验证
+- [x] T004 在 conda 环境 `python313` 下执行 `conda run -n python313 pip install -r requirements.txt`，并逐个验证 `pywin32`、`cv2`、`winocr`、`onnxruntime`、`fastapi`、`pydirectinput` 可导入（当前环境仅有 pillow，必须补装）
+  - 已验证（2026-10-12）：依赖均已安装，无需补装——cv2 5.0.0.93、numpy 2.5.3、pillow 12.3.0、pywin32 312、pydirectinput 1.0.4、pyperclip 1.11.0、winocr 0.0.15、fastapi 0.143.0、uvicorn 0.54.0、onnxruntime 1.31.0，逐项 import 全部通过
+  - 实测约束：`winocr` 先于 `onnxruntime` 加载会使进程直接崩溃（无异常、无输出），反向顺序正常；故 OCR 工厂必须先构造高精度通道再构造内置通道，`ocr/factory.py` 中的加载顺序不可调换
 
 ---
 
@@ -171,8 +172,12 @@
 **Purpose**: 文档、打包与端到端验收
 
 - [x] T045 创建根目录 `README.md`：项目定位、三类能力说明、CLI 用法、库调用示例、Web 启动方式，以及**高精度 OCR 通道启用指引**（安装步骤与依赖体积、模型获取、启用与切换、验证是否生效、模型缺失/版本冲突/首次加载慢的排查步骤）（FR-045、FR-051、SC-008）
-- [ ] T046 验证打包：`pip install .` 后 `auto_control_script/web` 与其静态资源均已打进包，网页可正常打开（对应 T002 与 D10）
+- [x] T046 验证打包：`pip install .` 后 `auto_control_script/web` 与其静态资源均已打进包，网页可正常打开（对应 T002 与 D10）
+  - 已验证（2026-10-12）：用 `pip wheel . --no-deps` 构建 wheel 后检查内容——72 个条目，`core`/`capture`/`interaction`/`ocr`/`matcher`/`script`/`utils`/`web` 八个子包与 `web/static` 下 index.html、app.js、style.css 均在包内；另启动 Web 服务验证 `/`、`/app.js`、`/style.css` 均返回 200，页面可正常打开
+  - 未实际执行 `pip install .`，以免污染 python313 环境；包内容与可访问性已由 wheel 与 HTTP 双重确认
 - [ ] T047 按 `quickstart.md` 的 10 组场景执行端到端验证，逐条记录结果（含安卓项在无设备时跳过）
+  - 已自动验证（2026-10-12）：场景 1 目标枚举、场景 2 后台截图（7680x2160，printwindow 路径）、场景 3 OCR 双通道（自动选择命中 precise 共 38 条中文；指定 builtin 时 confidence_available=false 且置信度为空；切换通道后标识随之改变）、场景 6 按字查找（命中带坐标，未命中不带坐标且 detail 给出原因）、场景 8 脚本校验/导出/改名导入/版本校验（步骤与参数完全一致，版本 999 报可读错误）、场景 9 高精度通道（返回 channel: precise）、场景 7 的 Web 服务与静态资源、场景 10 保留上限配置（max_runs=20、max_snapshots=200）
+  - 仍需人工（有真实副作用或需交互）：场景 4 后台点击与输入文本、场景 5 前台点击、场景 2 的遮挡验证、场景 7 的拖拽选区/添加步骤/运行/暂停继续停止、场景 10 超上限时的清理触发（当前仅 4 条运行记录，未达 20 条上限）
 - [x] T048 删除遗留 `openspec/` 目录：项目已改用 spec-kit，需求与变更统一归档在 `specs/` 下；`openspec/` 及其中的 window-capture / adb-control / game-automation / system-utils 四份旧能力描述不再维护
 
 ---

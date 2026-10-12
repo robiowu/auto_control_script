@@ -168,18 +168,17 @@ class BuiltinOcr(BaseOcr):
             winocr.recognize_pil(pil_image, lang=language))
 
         items = []
-        for line in result.get("lines", []):
-            text = (line.get("text") or "").strip()
+        # 异步接口返回的是 winrt 的 OcrResult 对象，按属性访问；同步接口才返回等价的字典
+        for line in result.lines:
+            text = (line.text or "").strip()
             if not text:
                 continue
             boxes = []
-            for word in line.get("words", []):
-                rect = word.get("bounding_rect") or {}
-                if "x" not in rect:
-                    continue
+            for word in line.words:
+                rect = word.bounding_rect
                 boxes.append((
-                    int(rect["x"]), int(rect["y"]),
-                    int(rect["x"] + rect["width"]), int(rect["y"] + rect["height"]),
+                    int(rect.x), int(rect.y),
+                    int(rect.x + rect.width), int(rect.y + rect.height),
                 ))
             if not boxes:
                 continue
