@@ -14,6 +14,7 @@ frame.py - 画面帧数据契约模块
 - 取图阶段已完成窗口边框裁剪与 DPI 换算，因此图像坐标可直接下发给点击动作
 """
 
+import os
 import time
 from dataclasses import dataclass, field
 
@@ -128,11 +129,30 @@ def save(frame: Frame, filepath: str) -> None:
     """
     将画面帧保存为图片文件，格式按后缀自动识别。
 
+    OpenCV 的 cv2.imwrite 走系统窄字符接口，遇到含非 ASCII 字符（如中文）的路径会返回 True
+    却不生成文件；故先编码为字节，再用 Python 文件接口写入。
+
     Args:
         frame (Frame): 待保存的画面帧
         filepath (str): 保存路径
+
+    Raises:
+        CaptureError: 后缀不受支持或编码失败时抛出
     """
-    cv2.imwrite(filepath, frame.pixels)
+    suffix = os.path.splitext(filepath)[1] or ".png"
+    try:
+        ok, buffer = cv2.imencode(suffix, frame.pixels)
+    except cv2.error as error:
+        raise CaptureError(
+            f"frame.save: 图片后缀 {suffix} 不受 OpenCV 支持，保存路径={filepath}，"
+            f"画面尺寸={frame.width}x{frame.height}，底层错误={error}"
+        ) from error
+    if not ok:
+        raise CaptureError(
+            f"frame.save: 图片编码失败，保存路径={filepath}，画面尺寸={frame.width}x{frame.height}"
+        )
+    with open(filepath, "wb") as file:
+        file.write(buffer.tobytes())
 
 
 def to_jpeg_bytes(frame: Frame, quality: int = 80) -> bytes:
@@ -156,6 +176,9 @@ def load(filepath: str) -> Frame:
     """
     从图片文件读取画面帧，用于 OCR 等离线场景。
 
+    OpenCV 的 cv2.imread 走系统窄字符接口，遇到含非 ASCII 字符（如中文）的路径时即使文件存在
+    也返回 None；故先用 Python 文件接口读入字节再解码。
+
     Args:
         filepath (str): 图片文件路径
 
@@ -165,8 +188,11 @@ def load(filepath: str) -> Frame:
     Raises:
         CaptureError: 文件不存在或无法解码时抛出
     """
-    pixels = cv2.imread(filepath, cv2.IMREAD_COLOR)
+    if not os.path.isfile(filepath):
+        raise CaptureError(f"frame.load: 图片文件不存在 {filepath}")
+    with open(filepath, "rb") as file:
+        pixels = cv2.imdecode(numpy.frombuffer(file.read(), numpy.uint8), cv2.IMREAD_COLOR)
     if pixels is None:
-        raise CaptureError(f"frame.load: 无法读取图片文件 {filepath}（文件不存在或格式不支持）")
+        raise CaptureError(f"frame.load: 无法解码图片文件 {filepath}（文件存在，但格式不支持或已损坏）")
     height, width = pixels.shape[:2]
     return Frame(pixels=pixels, width=width, height=height, target_id="file", path="file")
