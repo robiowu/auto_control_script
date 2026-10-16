@@ -1,5 +1,10 @@
 # Tasks: 统一截图·输入·OCR 自动化平台
 
+> **归档状态（2026-10-16）**：本需求已实施完成，归档至 `specs/archive/001-auto-control-platform/`。
+> 52 条功能需求全部落地——44 条原本已实现，8 条在归档前的核对中补齐并实测（详见文末「FR 核对结论」）。
+> 仍待人工的验收项：T047 剩「Web 拖拽选区与运行控制」「传统窗口后台输入实际生效」两项；
+> SC-001 与 SC-008 需真人按文档实操。逐条完成后方可勾选 T047。
+
 **Input**: Design documents from `/specs/001-auto-control-platform/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
