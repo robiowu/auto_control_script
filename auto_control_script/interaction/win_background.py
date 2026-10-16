@@ -14,6 +14,8 @@ interaction/win_background.py - Windows 后台输入模块
   结果校验交给脚本中的"截图比对"步骤完成
 """
 
+import ctypes
+import ctypes.wintypes
 import time
 
 import win32api
@@ -30,6 +32,11 @@ from auto_control_script.interaction.base import (
     Action, BaseInteraction,
 )
 from auto_control_script.interaction.key_codes import get_vk_code
+
+_user32 = ctypes.windll.user32
+_user32.PostMessageW.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.UINT,
+                                 ctypes.wintypes.WPARAM, ctypes.wintypes.LPARAM]
+_user32.PostMessageW.restype = ctypes.wintypes.BOOL
 
 WM_MOUSEMOVE = 0x0200
 WM_LBUTTONDOWN = 0x0201
@@ -81,7 +88,9 @@ def _post(hwnd: int, message: int, wparam: int, lparam: int) -> None:
     Raises:
         ActionError: 消息投递失败（窗口失效或消息队列不可用）时抛出
     """
-    ok = win32gui.PostMessage(hwnd, message, wparam, lparam)
+    # 走 ctypes 而非 win32gui 的封装：后者成功时返回 None（无返回值），
+    # 无法用于判定投递是否成功；原生 PostMessageW 成功返回非 0、失败返回 0
+    ok = _user32.PostMessageW(hwnd, message, wparam, lparam)
     if not ok:
         raise ActionError(
             f"interaction.win_background._post: 向窗口 {hwnd} 投递消息 0x{message:04X} 失败；"

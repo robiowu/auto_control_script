@@ -21,6 +21,7 @@ window_manager.py - Windows 窗口管理模块
 import ctypes
 import ctypes.wintypes
 
+import pywintypes
 import win32con
 import win32gui
 
@@ -338,7 +339,15 @@ class WindowManager:
             )
         if win32gui.IsIconic(self.hwnd):
             win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
-        win32gui.SetForegroundWindow(self.hwnd)
+        try:
+            win32gui.SetForegroundWindow(self.hwnd)
+        except pywintypes.error as error:
+            # 系统拒绝非前台进程抢占焦点时，该调用直接抛异常而非返回失败；
+            # 不捕获会穿透到命令行顶层，导致退出码失控（非约定的 4）
+            raise TargetUnavailableError(
+                f"WindowManager.bring_to_front: 窗口 {self.hwnd}（{self.title!r}）激活失败，"
+                f"系统拒绝抢占前台焦点；可稍后重试或手动点击该窗口，底层错误={error}"
+            ) from error
         if win32gui.GetForegroundWindow() != self.hwnd:
             raise TargetUnavailableError(
                 f"WindowManager.bring_to_front: 窗口 {self.hwnd}（{self.title!r}）激活失败，"
