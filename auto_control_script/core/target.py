@@ -28,6 +28,9 @@ KIND_WINDOW = "window"
 KIND_DEVICE = "device"
 """str: 目标类型——安卓设备。"""
 
+KIND_DESKTOP = "desktop"
+"""str: 目标类型——整个屏幕（虚拟屏幕，含所有显示器）。"""
+
 KIND_ALL = "all"
 """str: 枚举时的"全部类型"取值。"""
 
@@ -44,6 +47,8 @@ class Target:
         width (int): 图像像素宽度，即对外坐标空间的宽度
         height (int): 图像像素高度
         available (bool): 目标当前是否可用
+        visible (bool): 目标当前是否可见；窗口取 Win32 的 IsWindowVisible 结果，
+            设备固定为 True（设备无可见性概念）
         meta (dict): 差异信息，窗口含 class_name、client_width、client_height；
             设备含 state、product、连接方式
     """
@@ -54,6 +59,7 @@ class Target:
     width: int = 0
     height: int = 0
     available: bool = False
+    visible: bool = True
     meta: dict = field(default_factory=dict)
 
 
@@ -78,6 +84,7 @@ def build_window_target(hwnd: int) -> Target:
         width=manager.pixel_width,
         height=manager.pixel_height,
         available=True,
+        visible=bool(win32gui.IsWindowVisible(hwnd)),
         meta={
             "class_name": win_class_name(hwnd),
             "client_width": manager.client_width,
@@ -173,12 +180,34 @@ def device_size(serial: str) -> tuple:
     )
 
 
+def build_desktop_target() -> Target:
+    """
+    构造整屏目标（虚拟屏幕，覆盖所有显示器）。
+
+    Returns:
+        Target: 整屏目标，标识与类型均为 desktop
+    """
+    from auto_control_script.capture.desktop_capture import virtual_screen
+
+    left, top, width, height = virtual_screen()
+    return Target(
+        kind=KIND_DESKTOP,
+        id=KIND_DESKTOP,
+        name="整个屏幕",
+        width=width,
+        height=height,
+        available=width > 0 and height > 0,
+        visible=True,
+        meta={"left": left, "top": top},
+    )
+
+
 def list_targets(kind: str = KIND_ALL) -> list:
     """
     枚举可用目标。
 
     Args:
-        kind (str): KIND_WINDOW / KIND_DEVICE / KIND_ALL
+        kind (str): KIND_WINDOW / KIND_DEVICE / KIND_DESKTOP / KIND_ALL
 
     Returns:
         list: Target 列表；窗口在前、设备在后，均按名称排序
@@ -186,12 +215,14 @@ def list_targets(kind: str = KIND_ALL) -> list:
     Raises:
         ValueError: kind 取值非法时抛出
     """
-    if kind not in (KIND_WINDOW, KIND_DEVICE, KIND_ALL):
+    if kind not in (KIND_WINDOW, KIND_DEVICE, KIND_DESKTOP, KIND_ALL):
         raise ValueError(
             f"target.list_targets: kind 取值非法 (实际={kind!r})，"
-            f"可选值为 {[KIND_WINDOW, KIND_DEVICE, KIND_ALL]}"
+            f"可选值为 {[KIND_WINDOW, KIND_DEVICE, KIND_DESKTOP, KIND_ALL]}"
         )
     targets = []
+    if kind in (KIND_DESKTOP, KIND_ALL):
+        targets.append(build_desktop_target())
     if kind in (KIND_WINDOW, KIND_ALL):
         for item in window_manager.list_windows():
             hwnd = item["hwnd"]
@@ -229,6 +260,8 @@ def resolve_target(selector: str) -> Target:
         TargetUnavailableError: 找不到目标或匹配不唯一时抛出
     """
     selector = selector.strip()
+    if selector.lower() in (KIND_DESKTOP, "整个屏幕"):
+        return build_desktop_target()
     if selector.isdigit():
         hwnd = int(selector)
         if window_manager.is_window(hwnd):

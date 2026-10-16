@@ -36,6 +36,7 @@ from auto_control_script.interaction import factory as interaction
 from auto_control_script.interaction.base import Action
 from auto_control_script.matcher import factory as matcher
 from auto_control_script.ocr import factory as ocr
+from auto_control_script.script import factory as script_factory
 from auto_control_script.script import model as script_model
 from auto_control_script.script import runner
 
@@ -183,7 +184,7 @@ def list_targets(kind: str = "all"):
     return [{
         "kind": item.kind, "id": item.id, "name": item.name,
         "width": item.width, "height": item.height, "available": item.available,
-        "meta": item.meta,
+        "visible": item.visible, "meta": item.meta,
     } for item in target_module.list_targets(kind)]
 
 
@@ -368,7 +369,7 @@ def create_run(request: RunRequest):
             f"web.app.create_run: 脚本 {script.name!r} 未记录基准分辨率，"
             f"按目标 {target.id}（{target.name!r}）的实际尺寸记为 {target.width}x{target.height}"
         )
-    executor = runner.Runner(script, target)
+    executor = script_factory.create_runner(script, target)
     if request.from_step:
         executor.session.current_step_index = request.from_step - 2
     executor.start()
@@ -456,6 +457,15 @@ def read_snapshot(run_id: str, snapshot_id: str):
         raise HTTPException(status_code=404, detail=f"快照 {snapshot_id} 不存在")
     with open(path, "rb") as file:
         return Response(content=file.read(), media_type="image/jpeg")
+
+
+@app.post("/api/runs/cleanup")
+@_guard
+def cleanup_runs():
+    """按保留上限清理最旧的运行记录与快照。"""
+    removed = runner.cleanup_runs()
+    logger.info(f"web.app.cleanup_runs: 按保留上限清理运行记录，删除 {removed} 条")
+    return {"removed": removed, "max_runs": script_model.max_runs()}
 
 
 @app.get("/api/runs/{run_id}/events")

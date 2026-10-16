@@ -3,7 +3,7 @@
 cli.py - 命令行入口模块
 
 职责:
-- 提供 targets / capture / ocr / input / run / script 六个子命令
+- 提供 targets / capture / ocr / input / run / cleanup / script 七个子命令
 - 人类可读输出与 --json 机器可读输出两种形态
 - 把异常按契约映射为稳定的退出码
 
@@ -33,6 +33,7 @@ from auto_control_script.core.target import Target
 from auto_control_script.interaction import factory as interaction
 from auto_control_script.interaction.base import ACTION_KINDS, Action
 from auto_control_script.ocr import factory as ocr
+from auto_control_script.script import factory as script_factory
 from auto_control_script.script import model as script_model
 from auto_control_script.script import runner
 
@@ -124,6 +125,7 @@ def cmd_targets(args) -> int:
     rows = [{
         "kind": item.kind, "id": item.id, "name": item.name,
         "width": item.width, "height": item.height, "available": item.available,
+        "visible": item.visible,
     } for item in targets]
     if args.json:
         print(json.dumps(rows, ensure_ascii=False, indent=2))
@@ -132,7 +134,8 @@ def cmd_targets(args) -> int:
             print("没有找到可用目标")
         for row in rows:
             print(f"[{row['kind']}] {row['id']}  {row['name']}  "
-                  f"{row['width']}x{row['height']}  available={row['available']}")
+                  f"{row['width']}x{row['height']}  available={row['available']}  "
+                  f"visible={row['visible']}")
     return EXIT_OK
 
 
@@ -239,7 +242,7 @@ def cmd_run(args) -> int:
     """
     script = script_model.resolve_script(args.script)
     target = _resolve(args)
-    executor = runner.Runner(script, target)
+    executor = script_factory.create_runner(script, target)
     if args.from_step:
         executor.session.current_step_index = args.from_step - 2
     executor.start()
@@ -270,6 +273,25 @@ def cmd_run(args) -> int:
               f"成功 {sum(1 for item in executor.session.records if item.status == 'success')} 步，"
               f"失败 {sum(1 for item in executor.session.records if item.status == 'failed')} 步")
     return EXIT_OK if executor.session.state == runner.STATE_SUCCEEDED else EXIT_FAILED
+
+
+def cmd_cleanup(args) -> int:
+    """
+    按保留上限清理最旧的运行记录与快照。
+
+    Args:
+        args: 命令行参数对象
+
+    Returns:
+        int: 退出码
+    """
+    removed = runner.cleanup_runs()
+    if args.json:
+        print(json.dumps({"removed": removed, "max_runs": script_model.max_runs()},
+                         ensure_ascii=False, indent=2))
+    else:
+        print(f"清理完成：删除 {removed} 条运行记录（保留上限={script_model.max_runs()} 条）")
+    return EXIT_OK
 
 
 def cmd_script(args) -> int:
@@ -358,7 +380,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_targets = subparsers.add_parser("targets", parents=[common], help="列出可用目标")
     p_targets.add_argument("--kind", default="all",
-                           choices=["all", "window", "device"], help="目标类型")
+                           choices=["all", "window", "device", "desktop"], help="目标类型")
     p_targets.set_defaults(func=cmd_targets)
 
     p_capture = subparsers.add_parser("capture", parents=[common], help="截图并保存为文件")
@@ -366,7 +388,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_capture.add_argument("--out", required=True, help="保存路径")
     p_capture.add_argument("--region", help="区域 x1,y1,x2,y2")
     p_capture.add_argument("--path", default=None,
-                           choices=["auto", "printwindow", "bitblt", "wgc", "adb"],
+                           choices=["auto", "printwindow", "bitblt", "wgc", "adb", "desktop"],
                            help="取图路径")
     p_capture.set_defaults(func=cmd_capture)
 
@@ -378,7 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ocr.add_argument("--channel", default=None,
                        choices=["auto", "builtin", "precise"], help="OCR 通道")
     p_ocr.add_argument("--path", default=None,
-                       choices=["auto", "printwindow", "bitblt", "wgc", "adb"],
+                       choices=["auto", "printwindow", "bitblt", "wgc", "adb", "desktop"],
                        help="取图路径")
     p_ocr.set_defaults(func=cmd_ocr)
 
@@ -405,6 +427,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_web.add_argument("--host", default=None, help="监听地址，默认取配置（本机回环）")
     p_web.add_argument("--port", type=int, default=None, help="监听端口，默认取配置")
     p_web.set_defaults(func=cmd_web)
+
+    p_cleanup = subparsers.add_parser("cleanup", parents=[common],
+                                      help="按保留上限清理最旧的运行记录")
+    p_cleanup.set_defaults(func=cmd_cleanup)
 
     p_script = subparsers.add_parser("script", parents=[common], help="脚本管理")
     p_script.add_argument("script_action", choices=["validate", "info", "list"],

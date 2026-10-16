@@ -130,6 +130,38 @@ function startPreviewAutoRefresh() {
   }, PREVIEW_INTERVAL_MS);
 }
 
+function fillStepParam(id, value) {
+  const target = document.getElementById(id);
+  if (target) {
+    target.value = value;
+  }
+}
+
+async function importScriptFile(event) {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (!file) {
+    return;
+  }
+  let parsed = null;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch (error) {
+    toast(`导入失败：文件不是合法的 JSON（${error.message}）`, true);
+    return;
+  }
+  const script = parsed.script || parsed;
+  try {
+    const result = await postJson("/api/scripts/import", { script });
+    applyScript(script);
+    el("script-name").value = result.name || "";
+    toast(`已导入脚本 ${result.name}`);
+    refreshScriptList();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
 function setupSelection() {
   const overlay = el("preview-overlay");
   let startPoint = null;
@@ -171,11 +203,13 @@ function setupSelection() {
     startPoint = null;
     if (x2 - x1 < 3 || y2 - y1 < 3) {
       el("coord-point").value = `${x1},${y1}`;
-      toast(`已取点：${x1},${y1}`);
+      fillStepParam("step-point", `${x1},${y1}`);
+      toast(`已取点：${x1},${y1}（已填入步骤坐标）`);
       return;
     }
     el("coord-region").value = `${x1},${y1},${x2},${y2}`;
-    toast(`已框选区域：${x1},${y1},${x2},${y2}`);
+    fillStepParam("step-region", `${x1},${y1},${x2},${y2}`);
+    toast(`已框选区域：${x1},${y1},${x2},${y2}（已填入步骤区域）`);
   });
 }
 
@@ -533,6 +567,9 @@ function bindEvents() {
       link.click();
     }).catch((error) => toast(error.message, true));
   };
+
+  el("btn-import-script").onclick = () => el("import-file").click();
+  el("import-file").onchange = (event) => importScriptFile(event);
 
   el("btn-run").onclick = () => startRun().catch((error) => toast(error.message, true));
   el("btn-pause").onclick = () => runAction("pause");

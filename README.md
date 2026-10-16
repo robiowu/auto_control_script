@@ -49,6 +49,7 @@ python -m auto_control_script targets --json
 | `ocr` | 识别目标画面或图片文件中的文字 |
 | `input` | 下发一次点击 / 输入 / 按键等动作 |
 | `run` | 运行脚本 |
+| `cleanup` | 按保留上限清理最旧的运行记录与快照 |
 | `script` | 脚本校验与查看 |
 | `web` | 启动网页界面 |
 
@@ -57,6 +58,7 @@ python -m auto_control_script targets --json
 ```powershell
 python -m auto_control_script targets --json
 python -m auto_control_script capture --target 466954 --out screen.png --json
+python -m auto_control_script capture --target desktop --out fullscreen.png --json
 python -m auto_control_script ocr --image screen.png --json
 python -m auto_control_script ocr --target 466954 --channel precise --json
 python -m auto_control_script input --target 466954 --action click --point 100,200
@@ -124,6 +126,12 @@ python -m auto_control_script web
 | `wgc` | 需安装 `windows-capture` | 全屏渲染、游戏类窗口 |
 
 `auto` 模式按 `printwindow → wgc（已安装时）→ bitblt` 顺序尝试，每次切换都写入日志；**显式指定路径时只尝试该路径，失败即报错，不会偷偷换路径**。
+
+上述三条路径针对 Windows 窗口。另有一类目标 **整屏**：目标 `desktop`（名称「整个屏幕」）代表虚拟屏幕，即覆盖所有显示器的完整区域，取它的画面就是整屏截图（路径固定为 `desktop`）。其坐标为虚拟屏幕坐标系，原点在虚拟屏幕左上角——多显示器且主屏不在最左侧时，原点可能为负值。
+
+```powershell
+python -m auto_control_script capture --target desktop --out fullscreen.png
+```
 
 ## OCR 通道
 

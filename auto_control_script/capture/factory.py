@@ -43,9 +43,13 @@ def create_capture(target_kind: str) -> BaseCapture:
         from auto_control_script.capture.adb_capture import AdbCapture
 
         return AdbCapture()
+    if target_kind == target_module.KIND_DESKTOP:
+        from auto_control_script.capture.desktop_capture import DesktopCapture
+
+        return DesktopCapture()
     raise target_module.TargetUnavailableError(
         f"capture.factory.create_capture: 目标类型非法 (kind={target_kind!r})，"
-        f"可选值为 {[target_module.KIND_WINDOW, target_module.KIND_DEVICE]}"
+        f"可选值为 {[target_module.KIND_WINDOW, target_module.KIND_DEVICE, target_module.KIND_DESKTOP]}"
     )
 
 

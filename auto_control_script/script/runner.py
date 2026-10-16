@@ -30,6 +30,7 @@ from auto_control_script.interaction.base import (
 )
 from auto_control_script.matcher import factory as matcher
 from auto_control_script.script import model as script_model
+from auto_control_script.script.base import BaseRunner
 from auto_control_script.script.model import (
     FAIL_ABORT, FAIL_CONTINUE, FAIL_RETRY, STEP_CAPTURE, STEP_CLICK, STEP_CONDITION,
     STEP_DRAG, STEP_FIND_IMAGE, STEP_FIND_TEXT, STEP_INPUT_TEXT, STEP_KEY, STEP_LOG,
@@ -55,7 +56,7 @@ _RUNNING_TARGETS: set = set()
 """set: 当前有运行会话的目标标识，用于同目标互斥。"""
 
 
-class Runner:
+class Runner(BaseRunner):
     """
     脚本执行器。
 
@@ -91,6 +92,7 @@ class Runner:
         self._stop_event = threading.Event()
         self._scaled_notice_sent = False
         self._snapshot_dir = os.path.join(runs_dir(), self.session.id)
+        self._failure_snapshot = None
 
     # ------------------------------------------------------------------ 运行控制
 
@@ -245,9 +247,14 @@ class Runner:
         try:
             record.detail = self._dispatch_step(step)
             record.status = STATUS_SUCCESS
+            record.snapshot_id = record.detail.get("snapshot")
         except AutoControlError as error:
             record.status = STATUS_FAILED
             record.error = str(error)
+            # 查找类步骤会在失败前存好失败现场的画面，此处挂到步骤记录上供事后定位
+            if self._failure_snapshot:
+                record.snapshot_id = self._failure_snapshot
+                self._failure_snapshot = None
             policy = step.on_fail
             if policy == FAIL_CONTINUE:
                 logger.warning(
@@ -409,8 +416,10 @@ class Runner:
                     "found": True, "point": result.point, "box": result.box,
                     "score": result.score, "attempts": attempt,
                     "capture_path": frame.path, "detail": result.detail,
+                    "snapshot": self._save_snapshot(frame),
                 }
             if step.on_fail != FAIL_RETRY or time.monotonic() >= deadline:
+                self._failure_snapshot = self._save_snapshot(frame)
                 raise AutoControlError(
                     f"runner.Runner._execute_find: 步骤 {step.id!r} 查找失败：{result.detail}"
                     f"（已尝试 {attempt} 次，超时设置={step.timeout}秒）"
